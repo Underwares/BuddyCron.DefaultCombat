@@ -1,0 +1,123 @@
+// Copyright (C) 2011-2018 Bossland GmbH
+// See the file LICENSE for the source code's detailed license
+
+using BuddyCron;
+using BuddyCron.Behaviors;
+using BuddyCron.Helpers;
+using BuddyCron.Managers;
+using BuddyCron.Navigation;
+using BuddyCron.Objects;
+using Reborn.Utilities;
+using Reborn.Behaviors.Treesharp;
+using DefaultCombat.Core;
+using DefaultCombat.Helpers;
+
+namespace DefaultCombat.Routines
+{
+    /// <summary>
+    ///     7.x Sniper Virulence (ranged DoT DPS) rotation, fought from cover: keeps both
+    ///     Corrosive DoTs up and channels Cull while they tick.
+    /// </summary>
+    public class Virulence : RotationBase
+    {
+        public override CharacterDiscipline Discipline => CharacterDiscipline.Virulence;
+
+        public override string Name => "Sniper Virulence";
+
+        public override Composite Buffs => new PrioritySelector(
+            Spell.Buff("Coordination")
+        );
+
+        public override Composite Cooldowns
+        {
+            get
+            {
+                return new PrioritySelector(
+                    //Survival
+                    Spell.Buff("Escape", ret => Me.IsStunned),
+                    Spell.Buff("Shield Probe", ret => Me.HealthPercent <= 70),
+                    Spell.Buff("Evasion", ret => Me.HealthPercent <= 40),
+                    Spell.Buff("Entrench", ret => Me.IsInCover() && Me.HealthPercent <= 60),
+                    //Ability tree choice (lvl 68) -- silently skipped when not chosen
+                    Spell.Buff("Ballistic Shield", ret => Me.HealthPercent <= 50),
+                    //Resets defensive cooldowns when things go bad
+                    Spell.Buff("Meticulous Preparation", ret => Me.HealthPercent <= 25),
+
+                    //Energy
+                    Spell.Cast("Adrenaline Probe", ret => Me.EnergyPercent <= 45),
+
+                    //Offensive -- Laze Target is the autocrit cooldown; every Sniper discipline keeps it
+                    Spell.Cast("Laze Target", ret => Me.Target.StrongOrGreater()),
+                    //Ability tree choice (lvl 47) -- silently skipped when not chosen
+                    Spell.Cast("Target Acquired", ret => Me.Target.StrongOrGreater()),
+
+                    Spell.Buff("Entrench", ret => Me.Target.StrongOrGreater() && Me.IsInCover()),
+                    Spell.Buff("Unity", ret => Me.Companion != null && Me.HealthPercent <= 15)
+                    );
+            }
+        }
+
+        public override Composite SingleTarget
+        {
+            get
+            {
+                return new PrioritySelector(
+                    //Movement
+                    CombatMovement.CloseDistance(Distance.Ranged),
+
+
+                    //Legacy Heroic Moment Abilities --will only be active when user initiates Heroic Moment--
+                    HeroicComposite,
+
+                    //Cover -- Lethal Shot/Snipe/Series of Shots require it and it is our energy regen
+                    Spell.Buff("Crouch", ret => !Me.IsInCover() && !Me.IsMoving),
+
+                    //Interrupt
+                    Spell.Cast("Distraction", ret => Me.Target.IsCasting && CombatHotkeys.EnableInterrupts),
+
+                    //Rotation -- dots first, they are the whole spec
+                    Spell.DoT("Corrosive Dart", "Corrosive Dart"),
+                    Spell.DoT("Corrosive Grenade", "Corrosive Grenade"),
+                    //Weakening Blast makes every dot tick hit harder -- pair it with Cull
+                    Spell.Cast("Weakening Blast",
+                        ret => Me.Target.HasMyDebuff("Corrosive Dart") || Me.Target.HasMyDebuff("Corrosive Grenade")),
+                    //Cull only pays off while the dots are actually ticking. Corrosive Grenade is a later
+                    //pickup, so do not let its absence lock Cull out on a low level character.
+                    Spell.Cast("Cull",
+                        ret => Me.Target.DebuffTimeLeft("Corrosive Dart") > 3
+                               && (Me.Target.DebuffTimeLeft("Corrosive Grenade") > 3 || Me.Level < 40)),
+                    Spell.Cast("Takedown", ret => Me.Target.HealthPercent <= 30 || Me.HasBuff("Lethal Takedown")),
+
+                    //Low Energy -- Series of Shots is energy positive, use it before falling to Rifle Shot
+                    Spell.Cast("Series of Shots", ret => Me.EnergyPercent < 65),
+                    Spell.Cast("Rifle Shot", ret => Me.EnergyPercent < 50),
+
+                    //Fillers -- Lethal Shot replaces Snipe once it is trained
+                    Spell.Cast("Lethal Shot"),
+                    Spell.Cast("Snipe"),
+
+                    //Never stall
+                    Spell.Cast("Rifle Shot")
+                    );
+            }
+        }
+
+        public override Composite AreaOfEffect
+        {
+            get
+            {
+                return new Decorator(ret => Targeting.ShouldAoe,
+                    new PrioritySelector(
+                        Spell.Buff("Crouch", ret => !Me.IsInCover() && !Me.IsMoving),
+                        //Corrosive Grenade spreads Corrosive Dart, so land the dart first
+                        Spell.DoT("Corrosive Dart", "Corrosive Dart"),
+                        Spell.DoT("Corrosive Grenade", "Corrosive Grenade"),
+                        //Ability tree choice (lvl 68) for Virulence -- skipped when not chosen
+                        Spell.CastOnGround("Orbital Strike", ret => Me.IsInCover() && Me.EnergyPercent > 60),
+                        Spell.Cast("Fragmentation Grenade", ret => Me.EnergyPercent > 50),
+                        Spell.CastOnGround("Suppressive Fire", ret => Me.IsInCover() && Me.EnergyPercent > 30)
+                        ));
+            }
+        }
+    }
+}

@@ -1,0 +1,113 @@
+// Copyright (C) 2011-2018 Bossland GmbH
+// See the file LICENSE for the source code's detailed license
+
+using BuddyCron;
+using BuddyCron.Behaviors;
+using BuddyCron.Helpers;
+using BuddyCron.Managers;
+using BuddyCron.Navigation;
+using BuddyCron.Objects;
+using Reborn.Utilities;
+using Reborn.Behaviors.Treesharp;
+using DefaultCombat.Core;
+using DefaultCombat.Helpers;
+
+namespace DefaultCombat.Routines
+{
+    /// <summary>
+    ///     7.x Shadow Infiltration (stealth melee burst DPS) rotation: opens from stealth with
+    ///     Shadow Stride and spends 3-stack Breaching Shadows on Force Breach.
+    /// </summary>
+    public class Infiltration : RotationBase
+    {
+        public override CharacterDiscipline Discipline => CharacterDiscipline.Infiltration;
+
+        public override string Name => "Shadow Infiltration";
+
+        public override Composite Buffs
+        {
+            get
+            {
+                return new PrioritySelector(
+                    Spell.Buff("Force Valor"),
+                    //Always re-stealth out of combat so we can open with Shadow Stride + Vaulting Slash
+					Spell.Buff("Stealth", ret => !Rest.KeepResting() && !DefaultCombat.MovementDisabled && !Me.IsMounted)
+                    );
+            }
+        }
+
+        public override Composite Cooldowns
+        {
+            get
+            {
+                return new PrioritySelector(
+                    Spell.Buff("Force of Will", ret => Me.IsStunned),
+                    Spell.Buff("Battle Readiness", ret => Me.InCombat),
+                    Spell.Buff("Deflection", ret => Me.HealthPercent <= 60),
+                    Spell.Buff("Resilience", ret => Me.HealthPercent <= 50),
+                    //Force Potency is what turns the 3 stack Force Breach into an autocrit
+                    Spell.Buff("Force Potency", ret => Me.InCombat),
+                    Spell.Buff("Unity", ret => Me.Companion != null && Me.HealthPercent <= 15)
+                    );
+            }
+        }
+
+        public override Composite SingleTarget
+        {
+            get
+            {
+                return new PrioritySelector(
+                    //Stealth opener / gap closer
+                    Spell.Cast("Shadow Stride", ret => CombatHotkeys.EnableCharge && Me.Target.Distance >= 1f),
+                    Spell.Cast("Force Speed", ret => CombatHotkeys.EnableCharge && Me.IsMoving && Me.Target.Distance > 1f),
+
+                    //Movement
+                    CombatMovement.CloseDistance(Distance.Melee),
+
+                    //Legacy Heroic Moment Abilities --will only be active when user initiates Heroic Moment--
+                    HeroicComposite,
+
+                    //Interrupts
+                    Spell.Cast("Mind Snap", ret => Me.Target.IsCasting && CombatHotkeys.EnableInterrupts),
+                    Spell.Cast("Force Stun", ret => Me.Target.IsCasting && CombatHotkeys.EnableInterrupts),
+
+                    //Rotation
+                    //Force Breach is only worth spending at 3 stacks of Breaching Shadows (Shadow
+                    //Technique, 30s buff, caps at 3). Before Shadow Technique is trained there are no
+                    //stacks to build, so let low levels use it freely.
+                    Spell.Cast("Force Breach",
+                        ret => Me.BuffCount("Breaching Shadows") >= 3 || Me.Level < 20),
+                    Spell.Cast("Spinning Strike", ret => Me.Target.HealthPercent <= 30 || Me.HasBuff("Stalker's Swiftness")),
+                    //Vaulting Slash is the hardest hitting ability - use it on cooldown
+                    Spell.Cast("Vaulting Slash"),
+                    //Psychokinetic Blast goes on cooldown regardless of Circling Shadows stacks
+                    Spell.Cast("Psychokinetic Blast"),
+                    Spell.Cast("Shadow Strike", ret => Me.HasBuff("Infiltration Tactics")),
+                    //Clairvoyant Strike is the filler and keeps Clairvoyance up
+                    Spell.Cast("Clairvoyant Strike", ret => Me.ForcePercent >= 25),
+                    //Filler for characters that have not trained Clairvoyant Strike yet
+                    Spell.Cast("Double Strike", ret => Me.ForcePercent >= 25),
+                    Spell.Cast("Saber Strike")
+
+                    );
+            }
+        }
+
+        public override Composite AreaOfEffect
+        {
+            get
+            {
+                return new PrioritySelector(
+                    new Decorator(ret => Targeting.ShouldAoe,
+                        new PrioritySelector(
+                            Spell.Cast("Force Breach",
+                                ret => Me.BuffCount("Breaching Shadows") >= 3 || Me.Level < 20),
+							Spell.Cast("Cleaving Cut"))),
+                    new Decorator(ret => Targeting.ShouldPbaoe,
+                        //Whirling Blow is the AoE filler and still procs Shadow Technique
+                        Spell.Cast("Whirling Blow", ret => Me.ForcePercent >= 40))
+                    );
+            }
+        }
+    }
+}

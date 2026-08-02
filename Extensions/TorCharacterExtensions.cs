@@ -1,0 +1,157 @@
+using System.Collections.Generic;
+using System.Linq;
+using BuddyCron;
+using BuddyCron.Objects;
+
+namespace DefaultCombat.Extensions
+{
+    /// <summary>Dispel helpers: knows which raid/flashpoint debuffs are worth cleansing.</summary>
+    public static class HeroCharacterExtensions
+    {
+        private static readonly IReadOnlyList<string> _dispellableDebuffs = new List<string>
+        {
+            								//-=-Universal-=-
+            "Weakened (Physical)",
+            								
+            								
+            								//-=-Operations-=-
+            //Eternity Vault
+            //--
+            
+            //Explosive Conflicts
+            "Mental Anguish",
+            "Weakened",
+            
+            //Gods from the Machine
+            "Armor Melt (Any)",
+            
+            //Karagga's Palace
+            "Unstable Energy",
+            
+            //Scum and Villainy
+            
+            //Temple of Scarifice
+            
+            //Terror from Beyond
+            "Corrosive Slime",
+            
+            //The Dread Fortress
+            "Corrupted Nanites (Any)",
+            
+            //The Dread Palace
+            "Affliction",
+            "Death Mark",
+
+            //The Ravagers
+            
+            
+            								//-=-Flashpoints-=-
+            //Assault on Tython
+            
+            //Athiss
+            
+            //Battle of Rishi
+            
+            //Blood Hunt
+            "Bleeding (Physical)",
+            //Boarding Party
+            
+            //Cademinu
+            
+            //Collicoid War Games
+            
+            //Crisis on Umbara
+            
+            //Czerka Core Meltdown
+            
+            //Depths of Manaan
+            
+            //Directive 7
+            
+            //Hammer Station
+            
+            //Kaon
+            
+            //Korriban Incursion
+            
+            //Kuat Drive Yards
+            
+            //Legacy of Rakata
+            "Hunting Trap (Any)",
+
+            //Lost Island
+            
+            //Maelstrom Prison
+            
+            //Mandalorian Raiders
+            
+            //Red Reaper
+            
+            //Taral V
+            
+            //The Battle of Illum
+            
+            //The Black Talon
+            
+            //The Esseles
+            
+            //The False Emperor
+            "Affliction (Force)",
+            
+            //A Traitor Among the Chiss
+            
+            //The Foundry
+            
+            
+            								//-=-Uprisings-=-
+            
+            
+            //Crimson Fang
+            
+            //Divided We Fall
+            
+            //Trench Runner
+            
+            //Trial and Error
+            
+            //Landing Party
+            
+            //Done and Dusted
+            
+            //Firefrost
+            
+            //Fractured
+            
+            //Destroyer of Worlds
+            
+            //Inferno
+            
+            
+            								//-=-PVP-=-
+            //"Trauma (Physical)",
+            
+            
+            								//-=-World and Event Bosses-=-
+            								
+            
+            		//Events
+            
+            //Xenoanalyst II
+            
+            //Colossal Monolith
+            
+            //Golden Fury
+            
+            //The Eyeless
+            
+            		//World Bosses
+        };
+
+        /// <summary>True when <paramref name="target"/> carries any debuff from the dispellable
+        /// table (null-safe).</summary>
+        public static bool ShouldDispel(this HeroCharacter target)
+        {
+            return target != null && _dispellableDebuffs.Any(target.HasDebuff);
+        }
+    }
+}

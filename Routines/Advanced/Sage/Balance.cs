@@ -1,0 +1,122 @@
+// Copyright (C) 2011-2018 Bossland GmbH
+// See the file LICENSE for the source code's detailed license
+
+using BuddyCron;
+using BuddyCron.Behaviors;
+using BuddyCron.Helpers;
+using BuddyCron.Managers;
+using BuddyCron.Navigation;
+using BuddyCron.Objects;
+using Reborn.Utilities;
+using Reborn.Behaviors.Treesharp;
+using DefaultCombat.Core;
+using DefaultCombat.Helpers;
+
+namespace DefaultCombat.Routines
+{
+    /// <summary>
+    ///     Sage Balance (DoT ranged dps) rotation: keeps Weaken Mind / Sever Force rolling,
+    ///     Force in Balance on cooldown, and spends Presence of Mind on instant Vanquishes.
+    /// </summary>
+    public class Balance : RotationBase
+    {
+        public override CharacterDiscipline Discipline => CharacterDiscipline.Balance;
+
+        public override string Name => "Sage Balance";
+
+        public override Composite Buffs => new PrioritySelector(
+            Spell.Buff("Force Valor")
+        );
+
+        public override Composite Cooldowns
+        {
+            get
+            {
+                return new PrioritySelector(
+                    Spell.Buff("Force of Will", ret => Me.IsStunned),
+
+                    //Defensives
+                    Spell.Buff("Force Barrier", ret => Me.HealthPercent <= 20),
+                    Spell.Buff("Force Mend", ret => Me.HealthPercent <= 60),
+                    Spell.Buff("Force Armor", ret => Me.InCombat && !Me.HasDebuff("Force-imbalanced")),
+
+                    //Offensive cooldowns
+                    Spell.Buff("Force Empowerment", ret => CombatHotkeys.EnableRaidBuffs),
+                    Spell.Cast("Mental Alacrity"),
+                    Spell.Cast("Force Potency"),
+
+                    //Force management
+                    Spell.Cast("Vindicate", ret => Me.ForcePercent < 50 && Me.HealthPercent > 50 && !Me.HasDebuff("Weary")),
+
+                    Spell.Buff("Unity", ret => Me.Companion != null && Me.HealthPercent <= 15)
+                    );
+            }
+        }
+
+        public override Composite SingleTarget
+        {
+            get
+            {
+                return new PrioritySelector(
+                    //Movement
+                    CombatMovement.CloseDistance(Distance.Ranged),
+
+                    //Legacy Heroic Moment Abilities --will only be active when user initiates Heroic Moment--
+                    HeroicComposite,
+
+                    //Rotation (7.x priority: DoTs > Force in Balance > Vanquish > Force Serenity,
+                    //          Telekinetic Throw builds Presence of Mind to make Vanquish/Disturbance instant)
+                    Spell.Cast("Mind Snap", ret => Me.Target.IsCasting && CombatHotkeys.EnableInterrupts),
+
+                    //Presence of Mind (caps at 4 stacks) -> instant, cheaper, harder-hitting Vanquish
+                    Spell.Cast("Vanquish", ret => Me.BuffCount("Presence of Mind") >= 4),
+
+                    //DoTs first -- Force in Balance and Force Serenity are boosted by them
+                    Spell.DoT("Weaken Mind", "Weaken Mind"),
+                    Spell.DoT("Sever Force", "Sever Force"),
+
+                    //Force in Balance on cooldown (ground-targeted sphere, applies Force Suppression)
+                    Spell.CastOnGround("Force in Balance"),
+
+                    //Force Serenity wants Weaken Mind on the target for its damage bonus
+                    Spell.Cast("Force Serenity", ret => Me.Target.HasMyDebuff("Weaken Mind") || Me.Level < 30),
+
+                    //Vanquish on cooldown even without the proc
+                    Spell.Cast("Vanquish"),
+
+                    //Dump leftover Presence of Mind stacks into an instant Disturbance
+                    Spell.Cast("Disturbance", ret => Me.BuffCount("Presence of Mind") >= 4),
+
+                    //Telekinetic Blitz is an ability-tree choice (lvl 68), charges come from Force Speed
+                    Spell.Cast("Telekinetic Blitz"),
+
+                    //Fillers -- Telekinetic Throw is the builder/filler channel; Disturbance, Project and
+                    //Saber Strike keep low-level characters from ever stalling
+                    Spell.Cast("Telekinetic Throw", ret => Me.BuffCount("Presence of Mind") < 4),
+                    Spell.Cast("Disturbance"),
+                    Spell.Cast("Project"),
+                    Spell.Cast("Saber Strike", ret => Me.Target.Distance <= Distance.Melee)
+                    );
+            }
+        }
+
+        public override Composite AreaOfEffect
+        {
+            get
+            {
+                return new Decorator(ret => Targeting.ShouldAoe,
+                    new PrioritySelector(
+                        Spell.Cast("Mind Snap", ret => Me.Target.IsCasting && CombatHotkeys.EnableInterrupts),
+
+                        //Keep the DoTs rolling -- Force in Balance spreads/benefits from them
+                        Spell.DoT("Weaken Mind", "Weaken Mind"),
+                        Spell.DoT("Sever Force", "Sever Force"),
+                        Spell.CastOnGround("Force in Balance"),
+
+                        Spell.Cast("Vanquish", ret => Me.BuffCount("Presence of Mind") >= 4),
+                        Spell.CastOnGround("Forcequake")
+                        ));
+            }
+        }
+    }
+}
