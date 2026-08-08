@@ -33,11 +33,17 @@ namespace DefaultCombat.Core
 
 
 
-        /// <summary>Composite that moves toward the current target and stops once within
-        /// <paramref name="range"/>.</summary>
+        /// <summary>Creates a composite that closes to <paramref name="range"/> while the botbase
+        /// is autonomous, blocking later rotation actions until the current target is in range.</summary>
         public static Composite CloseDistance(float range)
         {
-            return CommonBehaviors.MoveAndStop(location => BuddyCron.Core.Player.Target.Location, r=>range, true, r=> $"Closing to {range} on {BuddyCron.Core.Player.Target.Name}" );
+            return new Decorator(
+                ret => !DefaultCombat.MovementDisabled,
+                CommonBehaviors.MoveAndStop(
+                    location => BuddyCron.Core.Player.Target.Location,
+                    ret => range,
+                    true,
+                    ret => $"Closing to {range} on {BuddyCron.Core.Player.Target.Name}"));
         }
     }
 }

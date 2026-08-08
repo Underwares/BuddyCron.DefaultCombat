@@ -23,9 +23,8 @@
     <IsPublishable>false</IsPublishable>
   </PropertyGroup>
 
-  <!-- BuddyCronRefs.props supplies the host reference set: project references in the repo,
-       assembly references when this .csproj is opened from the copy that ships inside an
-       install. -->
+  <!-- BuddyCronRefs.props supplies the host reference set: project references in the repo and the
+       compile-only reference package when this .csproj is opened from an install. -->
   <PropertyGroup>
     <BuddyCronRefsProps>$([MSBuild]::GetPathOfFileAbove('BuddyCronRefs.props', '$(MSBuildThisFileDirectory)'))</BuddyCronRefsProps>
   </PropertyGroup>

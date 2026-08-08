@@ -1,21 +1,22 @@
 // Copyright (C) 2011-2018 Bossland GmbH
 // See the file LICENSE for the source code's detailed license
 
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using Timer = System.Timers.Timer;
 using BuddyCron;
 using BuddyCron.Behaviors;
 using BuddyCron.Helpers;
 using BuddyCron.Managers;
 using BuddyCron.Navigation;
 using BuddyCron.Objects;
-using Reborn.Utilities;
-using Reborn.Behaviors.Treesharp;
-using System.Numerics;
 using DefaultCombat.Helpers;
+using Reborn.Behaviors.Treesharp;
+using Reborn.Utilities;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Numerics;
+using System.Windows;
 using Action = Reborn.Behaviors.Treesharp.Action;
+using Timer = System.Timers.Timer;
 
 namespace DefaultCombat.Core
 {
@@ -69,19 +70,15 @@ namespace DefaultCombat.Core
         public static Composite Cast(string spell, UnitSelectionDelegate onUnit, Selection<bool> reqs = null)
         {
             return
-                new Decorator(
-                    ret =>
-                        onUnit != null && onUnit(ret) != null && (reqs == null || reqs(ret)) &&
-                        AbilityManager.CanCast(spell, onUnit(ret)).Success,
-                    new PrioritySelector(
-                        new Action(delegate
+                new Decorator(ret => onUnit != null && onUnit(ret) != null && (reqs == null || reqs(ret)) && AbilityManager.CanCast(spell, onUnit(ret)).Success,
+                        new Action(ret =>
                         {
                             //added current target health percent check
                             Logger.Write(">> Casting <<   " + spell);
                             MovementManager.MoveStop();
-                            return RunStatus.Failure;
-                        }),
-                        new Action(ret => { AbilityManager.Cast(spell, onUnit(ret)); }))
+                            AbilityManager.Cast(spell, onUnit(ret));
+                            
+                        })
                     );
         }
 
