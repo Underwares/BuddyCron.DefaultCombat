@@ -17,14 +17,14 @@ namespace DefaultCombat.Routines
     // 7.x Shield Tech (tank). Me.EnergyPercent is resource REMAINING (100 = no heat, 0 = overheated),
     // so "low EnergyPercent" == "high heat" == conserve.
     /// <summary>
-    ///     PowerTech Shield Tech (tank) rotation: Rocket Punch / Rail Shot build Heat Screens
+    ///     Powertech Shield Tech (tank) rotation: Rocket Punch / Rail Shot build Heat Screens
     ///     for off-GCD Heat Blasts; guards the companion while solo.
     /// </summary>
     public class ShieldTech : RotationBase
     {
         public override CharacterDiscipline Discipline => CharacterDiscipline.ShieldTech;
 
-        public override string Name => "PowerTech Shieldtech";
+        public override string Name => "Powertech Shield Tech";
 
         public override Composite Buffs
         {

@@ -42,9 +42,12 @@ namespace DefaultCombat.Routines
                 return new PrioritySelector(
                     Spell.Buff("Tenacity", ret => Me.IsStunned),
 
-                    //Spend 10 stacks of Supercharge when the heal target actually needs it. Combat Medic's
-                    //spender is "Supercharged Kolto Cell" (abl.trooper.skill.combat_medic.supercharged_cell_support);
-                    //plain "Supercharged Cell" is the Assault Specialist one and never matches here.
+                    //Spend 10 stacks of Supercharge during sustained healing. Current guide text uses
+                    //Supercharged Cell, while the discipline-specific player record and aura use the
+                    //Supercharged Kolto Cell name; exact lookup safely falls through to whichever is known.
+                    Spell.Buff("Supercharged Cell",
+                        ret => Me.InCombat && Me.BuffCount("Supercharge") >= 10
+                               && HealTarget != null && HealTarget.HealthPercent <= 85),
                     Spell.Buff("Supercharged Kolto Cell",
                         ret => Me.InCombat && Me.BuffCount("Supercharge") >= 10
                                && HealTarget != null && HealTarget.HealthPercent <= 85),
@@ -103,37 +106,36 @@ namespace DefaultCombat.Routines
                         //Spell.Cast("Field Aid", ret => HealTarget.ShouldDispel()), ((New Code Hold off for now))
                         Spell.Cleanse("Field Aid"),
 
-                        //Keep Trauma Probe rolling on whoever we are healing
-                        Spell.Heal("Trauma Probe", on => HealTarget, 100, ret => !HealTarget.HasBuff("Trauma Probe")),
+                        //Maintain the charge-based probe on the active tank and current triage target.
+                        Spell.Heal("Trauma Probe", on => Tank, 100,
+                            ret => Tank != null && Tank.InCombat && !Tank.HasMyBuff("Trauma Probe")),
+                        Spell.Heal("Trauma Probe", 85, ret => !HealTarget.HasMyBuff("Trauma Probe")),
 
-                        //Bacta Infusion is instant and free, so use it on cooldown. It procs
-                        //Emergency Response, which makes the next Advanced Medical Probe instant.
-                        Spell.Heal("Bacta Infusion", 90, ret => Me.InCombat),
+                        //Bacta Infusion is free and makes the following Advanced Medical Probe instant.
+                        Spell.Heal("Bacta Infusion", 80, ret => Me.InCombat),
+                        Spell.Heal("Advanced Medical Probe", 80,
+                            ret => Me.InCombat && (Me.HasBuff("Emergency Response") ||
+                                                   Me.HasBuff("Supercharged Cell") ||
+                                                   Me.HasBuff("Supercharged Kolto Cell"))),
 
-                        //Procs worth reacting to
-                        Spell.Heal("Advanced Medical Probe", 95, ret => Me.HasBuff("Emergency Response") && Me.InCombat),
-                        //Combat Medic's spender is the ability "Supercharged Kolto Cell"; the aura it grants
-                        //may be named either way, so accept both rather than silently miss the window.
-                        Spell.Heal("Advanced Medical Probe", 95,
-                            ret => (Me.HasBuff("Supercharged Kolto Cell") || Me.HasBuff("Supercharged Cell")) && Me.InCombat),
-
-                        //AoE heal / Kolto Residue upkeep.
-                        //"Kolto Residue" is only the PASSIVE'S name (abl.trooper.skill.combat_medic.kolto_residue);
-                        //the aura it actually lands on the ally is "Invigorated" (Buff, 45s) -- verified against the ability data.
-                        new Decorator(ctx => HealTarget != null && Targeting.ShouldAoeHeal,
-                            Spell.CastOnGround("Kolto Bomb", on => HealTarget.Location, ret => Me.InCombat)),
+                        //Channels and clustered healing precede ordinary fillers.
+                        Spell.Heal("Successive Treatment", 75, ret => !Me.IsMoving),
+                        Spell.HealGround("Kolto Bomb", ret => Me.InCombat),
                         new Decorator(ctx => HealTarget != null,
                             Spell.CastOnGround("Kolto Bomb", on => HealTarget.Location,
-                                ret => Me.InCombat && HealTarget.HealthPercent < 90 && !HealTarget.HasMyBuff("Invigorated"))),
+                                ret => Me.InCombat && HealTarget.HealthPercent < 85 &&
+                                       !HealTarget.HasMyBuff("Invigorated"))),
 
-                        //Single target priority. Field Triage stacks (from Medical Probe, max 3)
-                        //discount Advanced Medical Probe -- spend them when they are capped.
-                        Spell.Heal("Advanced Medical Probe", 90, ret => Me.BuffCount("Field Triage") >= 3 || Me.Level < 40),
-                        Spell.Heal("Successive Treatment", 90, ret => !Me.IsMoving),    //channelled, so stand still
-                        Spell.Heal("Medical Probe", 88),                                //builds Field Triage stacks
-                        Spell.Heal("Advanced Medical Probe", 65),                       //expensive panic heal
+                        //Medical Probe builds Field Triage. Spend capped stacks before another
+                        //Medical Probe can win the priority; before the passive is learned, use
+                        //Advanced Medical Probe as an ordinary cooldown heal.
+                        Spell.Heal("Advanced Medical Probe", 75,
+                            ret => Me.BuffCount("Field Triage") >= 3 ||
+                                   !AbilityManager.HasAbility("Field Triage")),
+                        Spell.Heal("Medical Probe", 75, ret => Me.EnergyPercent >= 60),
+                        Spell.Heal("Medical Probe", 40, ret => Me.EnergyPercent >= 45),
 
-                        //Filler -- free, instant, regenerates cells and builds Supercharge
+                        //Free, instant recovery filler and the only heal available at the earliest levels.
                         Spell.Heal("Med Shot", 95)
                         );
             }

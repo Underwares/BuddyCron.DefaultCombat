@@ -44,10 +44,15 @@ namespace DefaultCombat.Routines
                     //Force management (Consuming Darkness applies Weary without Force Surge, so only use it starved)
                     Spell.Buff("Consuming Darkness", ret => Me.ForcePercent <= 25 && !Me.HasDebuff("Weary")),
 
-                    //Offensive cooldowns
-                    Spell.Cast("Recklessness"),
-                    Spell.Cast("Polarity Shift"),
-                    Spell.Buff("Force Speed", ret => Me.InCombat),   // Convection: next Lightning Bolt is instant
+                    //Start Polarity Shift before applying the long-lived DoT. Hold the charge-based
+                    //cooldowns for Lightning Flash's Force Flash window instead of wasting them on setup.
+                    Spell.Cast("Polarity Shift",
+                        ret => Me.InCombat && Me.Target != null && Me.Target.StrongOrGreater() &&
+                               (!Me.Target.HasMyDebuff("Affliction") || Me.HasBuff("Force Flash"))),
+                    Spell.Cast("Recklessness",
+                        ret => Me.HasBuff("Force Flash") || !AbilityManager.HasAbility("Lightning Flash")),
+                    Spell.Buff("Force Speed",
+                        ret => Me.HasBuff("Force Flash") || !AbilityManager.HasAbility("Lightning Flash")),
                     Spell.Buff("Unlimited Power", ret => CombatHotkeys.EnableRaidBuffs),
 
                     //Companion
@@ -83,7 +88,8 @@ namespace DefaultCombat.Routines
                     // NB: the client's name string is "Halted Offensive " WITH a trailing space, so
                     // AbilityManager matches ability names whitespace-insensitively.
                     Spell.Cast("Halted Offensive", ret => Me.HasBuff("Lightning Storm")),
-                    Spell.Cast("Volt Rush"),   // lvl 68 choice ability, skipped if untrained
+                    //Volt Rush is a movement fallback unless a tactical-specific AoE policy owns it.
+                    Spell.Cast("Volt Rush", ret => Me.IsMoving),
 
                     //Fillers
                     Spell.Cast("Lightning Bolt"),

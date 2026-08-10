@@ -75,8 +75,8 @@ namespace DefaultCombat.Routines
                     //Set the burst window up: Zealous Leap grants Felling Blow (autocrit) + Momentum,
                     //Force Exhaustion / Zen grant Singularity (free + 15% damage)
                     Spell.Cast("Zealous Leap",
-                        ret => CombatHotkeys.EnableCharge && (!Me.HasBuff("Felling Blow") || Me.Level < 30)),
-                    Spell.Cast("Force Exhaustion", ret => !Me.HasBuff("Singularity") || Me.Level < 30),
+                        ret => CombatHotkeys.EnableCharge && !Me.HasBuff("Felling Blow")),
+                    Spell.Cast("Force Exhaustion", ret => !Me.HasBuff("Singularity")),
 
                     //Cash the procs in
                     Spell.Cast("Focused Burst", ret => Me.HasBuff("Singularity") || Me.HasBuff("Felling Blow")),
@@ -85,7 +85,8 @@ namespace DefaultCombat.Routines
                     Spell.Cast("Concentrated Slice", ret => Me.ActionPoints >= 5),
                     Spell.Cast("Dispatch", ret => Me.Target.HealthPercent <= 30),
                     Spell.Cast("Blade Storm",
-                        ret => (Me.HasBuff("Momentum") || Me.Level < 30) && Me.Target.Distance <= 1f),
+                        ret => (Me.HasBuff("Momentum") || !AbilityManager.HasAbility("Zealous Leap")) &&
+                               Me.Target.Distance <= 1f),
 
                     //Focused Burst on cooldown even without a proc
                     Spell.Cast("Focused Burst"),
@@ -109,9 +110,10 @@ namespace DefaultCombat.Routines
                 return new Decorator(ret => Targeting.ShouldPbaoe,
                     new PrioritySelector(
                         //Force Sweep is the AoE stand-in for Focused Burst and eats the same procs
-                        Spell.Cast("Force Exhaustion", ret => !Me.HasBuff("Singularity") || Me.Level < 30),
+                        Spell.Cast("Force Exhaustion", ret => !Me.HasBuff("Singularity")),
                         Spell.Cast("Force Sweep",
-                            ret => Me.HasBuff("Singularity") || Me.HasBuff("Felling Blow") || Me.Level < 30),
+                            ret => Me.HasBuff("Singularity") || Me.HasBuff("Felling Blow") ||
+                                   !AbilityManager.HasAbility("Focused Burst")),
                         Spell.Cast("Zealous Leap", ret => CombatHotkeys.EnableCharge),
                         Spell.Cast("Force Sweep"),
                         Spell.Cast("Twin Saber Throw", ret => Me.Target.Distance <= 1f),

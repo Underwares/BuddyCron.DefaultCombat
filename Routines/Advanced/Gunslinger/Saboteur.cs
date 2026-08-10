@@ -1,4 +1,5 @@
-// Copyright (C) 2011-2018 Bossland GmbH// See the file LICENSE for the source code's detailed license
+// Copyright (C) 2011-2018 Bossland GmbH
+// See the file LICENSE for the source code's detailed license
 
 
 using BuddyCron;
@@ -84,15 +85,14 @@ namespace DefaultCombat.Routines
                             Spell.Cast("Flurry of Bolts")
                             )),
 
-                    //Rotation
+                    //Establish Shock Charge before the charge/channel cycle. Speed Shot refreshes it
+                    //with the recommended tactical; DoT reapplies it when that refresh is absent.
                     Spell.DoT("Shock Charge", "Shock Charge"),
-                    //Speed Shot is a huge chunk of our damage and shares a cooldown length with
-                    //Incendiary Grenade's duration -- it goes on cooldown, every cooldown
+                    Spell.Cast("Explosive Charge"),
                     Spell.Cast("Speed Shot"),
                     Spell.DoTGround("Incendiary Grenade", 9000),
-                    Spell.Cast("Explosive Charge"),
                     //Sabotage detonates our charges; do not let the Shock Charge gate lock it out
-                    //on a low level character that has not trained Shock Charge yet
+                    //on a low level character that has not trained Shock Charge yet.
                     Spell.Cast("Sabotage", ret => Me.Target.HasMyDebuff("Shock Charge") || Me.Level < 30),
                     Spell.Cast("Thermal Grenade", ret => Me.HasBuff("Seize the Moment")),
                     Spell.DoT("Vital Shot", "Vital Shot"),

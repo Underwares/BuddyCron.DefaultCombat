@@ -70,10 +70,17 @@ namespace DefaultCombat.Routines
                     //Legacy Heroic Moment Abilities --will only be active when user initiates Heroic Moment--
                     HeroicComposite,
 
-                    //Rotation
-                    //Discharge is only worth spending at 3 Static Charge (before Surging Charge is
-                    //trained there are no stacks to build, so let low levels use it as a plain nuke).
-                    Spell.Cast("Discharge", ret => Me.BuffCount("Static Charge") >= 3 || Me.Level < 20),
+                    //Refresh Voltage before spending charges so Ball Lightning retains its bonuses.
+                    Spell.Cast("Voltaic Slash",
+                        ret => Me.ForcePercent >= 25 &&
+                               (!Me.HasBuff("Voltage") || Me.BuffTimeLeft("Voltage") <= 3)),
+
+                    //Spend three Static Charges when that mechanic is active. The zero-stack CanCast
+                    //fallback lets the pre-upgrade low-level version fire without guessing an unlock level.
+                    Spell.Cast("Discharge",
+                        ret => Me.BuffCount("Static Charge") >= 3 ||
+                               (Me.BuffCount("Static Charge") == 0 &&
+                                AbilityManager.CanCast("Discharge", Me.Target).Success)),
                     Spell.Cast("Assassinate", ret => Me.Target.HealthPercent <= 30 || Me.HasBuff("Reaper's Rush")),
                     //Reaping Strike is only usable from stealth or inside the crit window - CanCast gates it
                     Spell.Cast("Reaping Strike"),
@@ -96,7 +103,10 @@ namespace DefaultCombat.Routines
                 return new PrioritySelector(
                     new Decorator(ret => Targeting.ShouldAoe,
                         new PrioritySelector(
-                            Spell.Cast("Discharge", ret => Me.BuffCount("Static Charge") >= 3 || Me.Level < 20),
+                            Spell.Cast("Discharge",
+                                ret => Me.BuffCount("Static Charge") >= 3 ||
+                                       (Me.BuffCount("Static Charge") == 0 &&
+                                        AbilityManager.CanCast("Discharge", Me.Target).Success)),
 							Spell.Cast("Severing Slash"))),
                     new Decorator(ret => Targeting.ShouldPbaoe,
                         //Lacerate is the AoE filler and also builds Voltage for Ball Lightning

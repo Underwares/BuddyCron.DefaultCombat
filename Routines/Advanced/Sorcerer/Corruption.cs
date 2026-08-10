@@ -92,37 +92,39 @@ namespace DefaultCombat.Routines
                     //Cleanse (Purge was renamed Expunge)
                     Spell.Cleanse("Expunge"),
 
-                    //Emergency Heal (Insta-cast, free, guaranteed crit)
+                    //Use the instant, free Dark Concentration heal for urgent triage.
                     Spell.Heal("Dark Heal", 80, ret => Me.HasBuff("Dark Concentration")),
 
-                    //AoE Healing
-                    Spell.HealGround("Revivification"),
+                    //Prevent predictable damage, then build Force Bending with Resurgence.
+                    Spell.HoT("Static Barrier", 90, ret => !HealTarget.HasDebuff("Deionized")),
+                    Spell.HoT("Resurgence", 95),
 
-                    //Spend Force Bending: Roaming Mend > Innervate > Dark Infusion
+                    //Spend Force Bending on the efficient channel before other consumers.
                     new Decorator(ret => Me.HasBuff("Force Bending"),
                         new PrioritySelector(
-                            Spell.Heal("Roaming Mend", 95),
                             Spell.Heal("Innervate", 90),
+                            Spell.Heal("Roaming Mend", 90,
+                                ret => !Me.HasBuff("Roaming Mend Charges")),
                             Spell.Heal("Dark Infusion", 60)
                             )),
 
-                    //Build Force Bending (Resurgence on cooldown)
-                    Spell.HoT("Resurgence", 95),
-                    Spell.HoT("Resurgence", on => Tank, 100, ret => Tank != null && Tank.InCombat),
+                    //Innervate builds Force Surge; Mend is strongest when several allies are hurt.
+                    Spell.Heal("Innervate", 85),
+                    Spell.Heal("Roaming Mend", 85,
+                        ret => !Me.HasBuff("Roaming Mend Charges") &&
+                               (Targeting.ShouldAoeHeal || HealTarget.HealthPercent <= 60)),
 
-                    //Bubble the tank / heal target, Static Barrier is the cheapest heal per GCD
+                    //Use the ground heal only for a sustained, tightly grouped raid-healing check.
+                    Spell.HealGround("Revivification", ret => Targeting.AoeHealCount >= 4),
+
+                    //Maintain preventative effects on the active tank after immediate triage.
                     Spell.HoT("Static Barrier", on => Tank, 100,
                         ret => Tank != null && Tank.InCombat && !Tank.HasDebuff("Deionized")),
-                    Spell.HoT("Static Barrier", 99, ret => HealTarget != null && !HealTarget.HasDebuff("Deionized")),
+                    Spell.HoT("Resurgence", on => Tank, 100, ret => Tank != null && Tank.InCombat),
 
-                    //Innervate on cooldown: cheap, and it builds Force Surge
-                    Spell.Heal("Innervate", 85),
-
-                    //Roaming Mend on cooldown, prefer the tank
-                    Spell.Heal("Roaming Mend", onUnit => Tank, 100, ret => Tank != null && Tank.InCombat),
-                    Spell.Heal("Roaming Mend", 95),
-
-                    //Single Target Healing
+                    //Dark Infusion is the efficient direct filler. At the earliest levels, Dark Heal
+                    //must fill that role because the character has not learned Dark Infusion yet.
+                    Spell.Heal("Dark Heal", 80, ret => Me.Level < 15),
                     Spell.Heal("Dark Heal", 35),
                     Spell.Heal("Dark Infusion", 80));
             }

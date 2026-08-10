@@ -65,20 +65,18 @@ namespace DefaultCombat.Routines
                     //Interrupts
                     Spell.Cast("Disruption", ret => Me.Target.IsCasting && CombatHotkeys.EnableInterrupts),
 
-                    //Rotation - Shatter / Impale / Vengeful Slam / Force Scream are used on cooldown,
-                    //which also keeps every bleed rolling at 100% uptime.
-                    Spell.Cast("Shatter"),
+                    //Alternate the repeating Impale / Force Scream / Vengeful Slam core with priority
+                    //slots. Shatter takes the first open slot and resets Ravage; Ravage is then consumed
+                    //in a later slot while multiple bleeds are active.
                     Spell.Cast("Impale"),
+                    Spell.Cast("Shatter"),
+                    Spell.Cast("Force Scream",
+                        ret => Me.BuffCount("Savagery") >= 2 || Me.Level < 40 || !Me.Target.BossOrGreater()),
+                    Spell.Cast("Ravage"),
                     Spell.Cast("Vengeful Slam", ret => Me.Target.Distance <= 0.5f),
-
-                    //Savagery (2 stacks) autocrits Force Scream. Fall back to casting it on cooldown
-                    //for low-level chars without the passive, and on trash where the crit doesn't matter.
-                    Spell.Cast("Force Scream", ret => Me.BuffCount("Savagery") >= 2 || Me.Level < 40 || !Me.Target.BossOrGreater()),
 
                     //Execute: free/anytime with the Destroyer proc, otherwise sub-30%.
                     Spell.Cast("Hew", ret => Me.HasBuff("Destroyer") || Me.Target.HealthPercent <= 30),
-
-                    Spell.Cast("Ravage"),
 
                     //Fillers
                     Spell.Cast("Retaliation"),
@@ -95,10 +93,10 @@ namespace DefaultCombat.Routines
             {
                 return new Decorator(ret => Targeting.ShouldPbaoe,
                     new PrioritySelector(
-                        Spell.Cast("Vengeful Slam", ret => Me.Target.Distance <= 0.5f),
-                        Spell.Cast("Shatter"),
                         Spell.Cast("Impale"),
+                        Spell.Cast("Shatter"),
                         Spell.Cast("Force Scream"),
+                        Spell.Cast("Vengeful Slam", ret => Me.Target.Distance <= 0.5f),
                         Spell.Cast("Sweeping Slash", ret => Me.ActionPoints >= 6)
                         ));
             }

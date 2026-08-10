@@ -46,7 +46,8 @@ namespace DefaultCombat.Routines
                     Spell.Buff("Force Clarity", ret => Me.Target != null && Me.Target.StrongOrGreater()),
                     Spell.Buff("Inspiration", ret => CombatHotkeys.EnableRaidBuffs),
 
-                    //Overload Saber is off-GCD -- keep the burn charge rolling at all times
+                    //Overload Saber is off-GCD. Force Melt below waits for two melee-applied stacks so
+                    //its non-melee GCD does not delay the three-stack application sequence.
                     Spell.Cast("Overload Saber", ret => !Me.HasBuff("Overload Saber")),
 
                     //Valorous Call tops Centering back up so Zen comes around again sooner
@@ -78,15 +79,17 @@ namespace DefaultCombat.Routines
                     //Rotation
                     Spell.Cast("Force Kick", ret => Me.Target.IsCasting && CombatHotkeys.EnableInterrupts),
 
-                    //Burn upkeep -- Cauterize is the only burn that can fall off (9s duration), so it is
-                    //refreshed as it expires. Force Melt outlasts nothing and is simply used on cooldown.
+                    //Spend Zen's autocrit window on Force Melt after two Overload Saber stacks, then
+                    //let the next melee hit apply the third stack.
+                    Spell.Cast("Force Melt",
+                        ret => !AbilityManager.HasAbility("Overload Saber") || !Me.HasBuff("Overload Saber") ||
+                               Me.Target.DebuffCount("Burning (Overload Saber)") >= 2),
+                    Spell.Cast("Merciless Slash"),
+
+                    //Maintain Cauterize after the two defining discipline attacks.
                     Spell.Cast("Cauterize",
                         ret => !Me.Target.HasMyDebuff("Burning (Cauterize)") ||
                                Me.Target.DebuffTimeLeft("Burning (Cauterize)") <= 2),
-                    Spell.Cast("Force Melt"),
-
-                    //Core damage -- Merciless Slash on cooldown, its cooldown shrinks with Merciless stacks
-                    Spell.Cast("Merciless Slash"),
                     Spell.Cast("Dispatch", ret => Me.Target.HealthPercent <= 30),
 
                     //Mind Sear makes the next Twin Saber Throw hit twice as hard and resets its cooldown
@@ -112,7 +115,9 @@ namespace DefaultCombat.Routines
                     new PrioritySelector(
                         //Burns first -- Force Sweep spreads them to everything around the target
                         Spell.Cast("Cauterize", ret => !Me.Target.HasMyDebuff("Burning (Cauterize)")),
-                        Spell.Cast("Force Melt"),
+                        Spell.Cast("Force Melt",
+                            ret => !AbilityManager.HasAbility("Overload Saber") || !Me.HasBuff("Overload Saber") ||
+                                   Me.Target.DebuffCount("Burning (Overload Saber)") >= 2),
                         Spell.Cast("Twin Saber Throw", ret => Me.Target.Distance <= 1f),
                         Spell.Cast("Force Sweep"),
                         Spell.Cast("Merciless Slash"),

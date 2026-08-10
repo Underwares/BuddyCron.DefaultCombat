@@ -77,16 +77,16 @@ namespace DefaultCombat.Routines
                             Spell.Cast("Hammer Shot")
                             )),
 
-                    //Rotation: never delay High Impact Bolt (it is the Energy Lode generator),
-                    //dump 4 Energy Lodes with Cell Burst, keep the Gut bleed rolling
-                    Spell.Cast("High Impact Bolt", ret => Me.HasBuff("Tactical Accelerator")),
-                    Spell.Cast("Cell Burst", ret => Me.BuffCount("Energy Lode") >= 4 || Me.Level < 50),
-                    Spell.Cast("High Impact Bolt"),
+                    //Establish delayed damage and the bleed before High Impact Bolt. Consume a reset
+                    //before another generator can overwrite it, then spend a full four-lode Cell Burst.
+                    Spell.Cast("Assault Plastique"),
                     //Gut's bleed is named just "Bleeding" (the Imperial mirror, Retractable Blade, uses
                     //"Bleeding (Retractable Blade)" -- the two are NOT named symmetrically). Gut has no
                     //cooldown, so a wrong name here re-casts it every GCD.
                     Spell.DoT("Gut", "Bleeding"),
-                    Spell.Cast("Assault Plastique"),
+                    Spell.Cast("High Impact Bolt", ret => Me.HasBuff("Tactical Accelerator")),
+                    Spell.Cast("Cell Burst", ret => Me.BuffCount("Energy Lode") >= 4),
+                    Spell.Cast("High Impact Bolt"),
                     Spell.Cast("Stockstrike"),
                     Spell.Cast("Shoulder Cannon", ret => Me.HasBuff("Shoulder Cannon") && Me.Target.StrongOrGreater()),
 

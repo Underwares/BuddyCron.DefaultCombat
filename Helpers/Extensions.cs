@@ -323,12 +323,51 @@ namespace DefaultCombat.Helpers
             return torPlayer.PartyPlayers(p => p.IsCompanionInUse() && companionQualifier(p.Companion)).Select(p => p.Companion);
         }
 
-        /// <summary>The character's group role. Currently always
-        /// <see cref="Global.PartyRole.RangedDPS"/> — role detection is not implemented.</summary>
+        /// <summary>Infers the character's combat role from their active combat-style discipline.</summary>
         public static Global.PartyRole PartyRole(this HeroCharacter torCharacter)
         {
-            //Idk if this was working anyway.
-            return Global.PartyRole.RangedDPS;
+            switch (torCharacter.CharacterDiscipline)
+            {
+                case CharacterDiscipline.Darkness:
+                case CharacterDiscipline.KineticCombat:
+                case CharacterDiscipline.Immortal:
+                case CharacterDiscipline.Defense:
+                case CharacterDiscipline.ShieldTech:
+                case CharacterDiscipline.ShieldSpecialist:
+                    return Global.PartyRole.MeleeTank;
+                case CharacterDiscipline.CombatMedic:
+                case CharacterDiscipline.Bodyguard:
+                case CharacterDiscipline.Medicine:
+                case CharacterDiscipline.Seer:
+                case CharacterDiscipline.Sawbones:
+                case CharacterDiscipline.Corruption:
+                    return Global.PartyRole.Healer;
+                case CharacterDiscipline.Deception:
+                case CharacterDiscipline.Hatred:
+                case CharacterDiscipline.Infiltration:
+                case CharacterDiscipline.Serenity:
+                case CharacterDiscipline.Rage:
+                case CharacterDiscipline.Vengeance:
+                case CharacterDiscipline.Focus:
+                case CharacterDiscipline.Vigilance:
+                case CharacterDiscipline.Annihilation:
+                case CharacterDiscipline.Carnage:
+                case CharacterDiscipline.Fury:
+                case CharacterDiscipline.Watchman:
+                case CharacterDiscipline.Combat:
+                case CharacterDiscipline.Concentration:
+                case CharacterDiscipline.AdvancedPrototype:
+                case CharacterDiscipline.FirebugPyrotech:
+                case CharacterDiscipline.Tactics:
+                case CharacterDiscipline.Plasmatech:
+                case CharacterDiscipline.Concealment:
+                case CharacterDiscipline.Lethality:
+                case CharacterDiscipline.Scrapper:
+                case CharacterDiscipline.Ruffian:
+                    return Global.PartyRole.MeleeDPS;
+                default:
+                    return Global.PartyRole.RangedDPS;
+            }
         }
 
         /// <summary>True when the player has companions unlocked and one is currently summoned.</summary>

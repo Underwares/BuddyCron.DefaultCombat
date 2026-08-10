@@ -102,26 +102,31 @@ namespace DefaultCombat.Routines
                     //Emergency - free below 30%
                     Spell.Heal("Surgical Probe", 30),
 
-                    //Burst triage - costs 1 Tactical Advantage
-                    Spell.Heal("Kolto Infusion", 55, ret => Me.HasBuff("Tactical Advantage") && Me.EnergyPercent >= 45),
+                    //Burst triage - preserve one Tactical Advantage outside the emergency range.
+                    Spell.Heal("Kolto Infusion", 55,
+                        ret => (Me.BuffCount("Tactical Advantage") >= 2 || HealTarget.HealthPercent <= 35) &&
+                               Me.EnergyPercent >= 45),
 
-                    //AoE healing
-                    Spell.Heal("Recuperative Nanotech", on => Tank ?? HealTarget, 90, ret => Targeting.ShouldAoeHeal),
+                    //Kolto Probe upkeep - two stacks on the tank and current triage target.
+                    Spell.Heal("Kolto Probe", on => Tank, 100,
+                        ret => Tank != null && Tank.InCombat &&
+                               (Tank.BuffCount("Kolto Probe") < 2 || Tank.BuffTimeLeft("Kolto Probe") < 6)),
+                    Spell.Heal("Kolto Probe", 90,
+                        ret => HealTarget.BuffCount("Kolto Probe") < 2 || HealTarget.BuffTimeLeft("Kolto Probe") < 6),
+
+                    //Smart and ground AoE healing require a real injured cluster.
+                    Spell.Heal("Recuperative Nanotech", on => Targeting.AoeHealTarget, 90,
+                        ret => Targeting.ShouldAoeHeal),
                     Spell.HealGround("Kolto Waves"),
 
-                    //Kolto Probe upkeep - two stacks is the core of the spec
-                    Spell.Heal("Kolto Probe", on => Tank, 100,
-                        ret => Tank != null && (Tank.BuffCount("Kolto Probe") < 2 || Tank.BuffTimeLeft("Kolto Probe") < 6)),
-                    Spell.Heal("Kolto Probe", 95,
-                        ret => HealTarget != null && (HealTarget.BuffCount("Kolto Probe") < 2 || HealTarget.BuffTimeLeft("Kolto Probe") < 6)),
-
-                    //Spend surplus Tactical Advantage
+                    //Spend only surplus Tactical Advantage outside emergencies.
                     Spell.Heal("Surgical Probe", 80, ret => Me.BuffCount("Tactical Advantage") >= 2),
 
-                    //Big single target heal - generates Tactical Advantage
-                    Spell.Heal("Kolto Injection", 75),
+                    //Kolto Injection supplies Tactical Advantage; preserve the high-regeneration band.
+                    Spell.Heal("Kolto Injection", 75,
+                        ret => Me.EnergyPercent >= 60 || HealTarget.HealthPercent <= 40),
 
-                    //Energy regen filler
+                    //Free low-level and resource-recovery filler.
                     Spell.Heal("Diagnostic Scan", 95)
                     );
             }

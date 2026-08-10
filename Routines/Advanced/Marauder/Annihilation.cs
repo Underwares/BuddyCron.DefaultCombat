@@ -46,7 +46,8 @@ namespace DefaultCombat.Routines
                     Spell.Buff("Furious Power", ret => Me.Target.StrongOrGreater()),
                     Spell.Buff("Bloodthirst", ret => CombatHotkeys.EnableRaidBuffs),
 
-                    //Deadly Saber is off-GCD -- keep the poison charge rolling at all times
+                    //Deadly Saber is off-GCD. Force Rend below waits for two melee-applied stacks so
+                    //its non-melee GCD does not delay the three-stack application sequence.
                     Spell.Cast("Deadly Saber", ret => !Me.HasBuff("Deadly Saber")),
 
                     //Frenzy tops Fury back up so Berserk comes around again sooner
@@ -78,18 +79,22 @@ namespace DefaultCombat.Routines
                     //Rotation
                     Spell.Cast("Disruption", ret => Me.Target.IsCasting && CombatHotkeys.EnableInterrupts),
 
-                    //Bleed upkeep -- Force Rend and Rupture want ~100% uptime, everything else feeds them
+                    //Spend Berserk's autocrit window on Force Rend after two Deadly Saber stacks, then
+                    //let the next melee hit apply the third stack.
                     Spell.Cast("Force Rend",
-                        ret => !Me.Target.HasMyDebuff("Force Rend") || Me.Target.DebuffTimeLeft("Force Rend") <= 2),
+                        ret => (!AbilityManager.HasAbility("Deadly Saber") || !Me.HasBuff("Deadly Saber") ||
+                                Me.Target.DebuffCount("Bleeding (Deadly Saber)") >= 2) &&
+                               (!Me.Target.HasMyDebuff("Force Rend") ||
+                                Me.Target.DebuffTimeLeft("Force Rend") <= 2)),
+                    Spell.Cast("Annihilate"),
+
+                    //Maintain Rupture after the two defining discipline attacks.
                     Spell.Cast("Rupture",
                         ret => !Me.Target.HasMyDebuff("Bleeding (Rupture)") ||
                                Me.Target.DebuffTimeLeft("Bleeding (Rupture)") <= 2),
 
-                    //Pulverize makes Dual Saber Throw free + resets its cooldown
+                    //Pulverize makes Dual Saber Throw free + resets its cooldown.
                     Spell.Cast("Dual Saber Throw", ret => Me.HasBuff("Pulverize") && Me.Target.Distance <= 1f),
-
-                    //Core damage
-                    Spell.Cast("Annihilate"),
                     Spell.Cast("Vicious Throw", ret => Me.Target.HealthPercent <= 30),
                     Spell.Cast("Ravage", ret => Me.HasBuff("Berserk")),
 
@@ -117,7 +122,10 @@ namespace DefaultCombat.Routines
                 return new Decorator(ret => Targeting.ShouldPbaoe,
                     new PrioritySelector(
                         //Bleeds first -- Smash/Rupture spread them (Blood Wave) and Smash bounces Force Rend
-                        Spell.Cast("Force Rend", ret => !Me.Target.HasMyDebuff("Force Rend")),
+                        Spell.Cast("Force Rend",
+                            ret => (!AbilityManager.HasAbility("Deadly Saber") || !Me.HasBuff("Deadly Saber") ||
+                                    Me.Target.DebuffCount("Bleeding (Deadly Saber)") >= 2) &&
+                                   !Me.Target.HasMyDebuff("Force Rend")),
                         Spell.Cast("Rupture", ret => !Me.Target.HasMyDebuff("Bleeding (Rupture)")),
                         Spell.Cast("Dual Saber Throw", ret => Me.Target.Distance <= 1f),
                         Spell.Cast("Smash"),

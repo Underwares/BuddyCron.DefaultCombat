@@ -88,11 +88,12 @@ namespace DefaultCombat.Routines
                             Spell.Cast("Flurry of Bolts")
                             )),
 
-                    //Rotation
+                    //Consume any existing Trickshot window, then use Aimed Shot before the channel.
+                    //The selector returns to Trickshot after either qualifying attack enables it.
                     Spell.Cast("Trickshot"),
-                    Spell.Cast("Penetrating Rounds"),
-                    //Charged Aim is a Sharpshooter passive; low level chars simply hard cast Aimed Shot
+                    //Charged Aim is a Sharpshooter passive; low level chars simply hard cast Aimed Shot.
                     Spell.Cast("Aimed Shot", ret => Me.BuffCount("Charged Aim") >= 2 || Me.Level < 30),
+                    Spell.Cast("Penetrating Rounds"),
                     Spell.Cast("Quickdraw", ret => Me.Target.HealthPercent <= 30),
                     //Filler dot -- only worth the energy on things that live long enough
                     Spell.DoT("Vital Shot", "Vital Shot", 0,

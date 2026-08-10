@@ -102,37 +102,40 @@ namespace DefaultCombat.Routines
                     //Spell.Cast("Restoration", ret => HealTarget.ShouldDispel()), ((New Code Hold off for now))
                     Spell.Cleanse("Restoration"),
 
-                    //Emergency Heal (Insta-cast) -- Altruism makes Benevolence instant and free
+                    //Use the instant, free Altruism heal for urgent triage.
                     Spell.Heal("Benevolence", 80, ret => Me.HasBuff("Altruism")),
 
-                    //AoE Healing
-                    new Decorator(ctx => Targeting.ShouldAoeHeal && Tank != null,
-                        Spell.CastOnGround("Salvation", on => Tank.Location)),
-                    Spell.Heal("Wandering Mend", 90, ret => Targeting.ShouldAoeHeal),
+                    //Prevent predictable damage, then build Conveyance with Rejuvenate.
+                    Spell.HoT("Force Armor", 90, ret => !HealTarget.HasDebuff("Force-imbalanced")),
+                    Spell.HoT("Rejuvenate", 95),
 
-                    //Single Target Healing
-                    Spell.HoT("Force Armor", 90, ret => HealTarget != null && !HealTarget.HasDebuff("Force-imbalanced")),
-
-                    //Build Conveyance (Rejuvenate) -- it buffs the next Healing Trance / Deliverance
-                    Spell.HoT("Rejuvenate", 90),
-
-                    //Use Conveyance
+                    //Spend Conveyance on the efficient channel before other consumers.
                     new Decorator(ret => Me.HasBuff("Conveyance"),
                         new PrioritySelector(
                             Spell.Heal("Healing Trance", 90),
-                            Spell.Heal("Deliverance", 70)
+                            Spell.Heal("Wandering Mend", 90,
+                                ret => !Me.HasBuff("Wandering Mend Charges")),
+                            Spell.Heal("Deliverance", 60)
                             )),
 
-                    //Healing Trance on cooldown -- crits build Resplendence for Vindicate
+                    //Healing Trance builds Resplendence; Mend is strongest when several allies are hurt.
                     Spell.Heal("Healing Trance", 85),
+                    Spell.Heal("Wandering Mend", 85,
+                        ret => !Me.HasBuff("Wandering Mend Charges") &&
+                               (Targeting.ShouldAoeHeal || HealTarget.HealthPercent <= 60)),
 
-                    //Buff Tank
-                    Spell.HoT("Force Armor", on => Tank, 100, ret => Tank != null && Tank.InCombat && !Tank.HasDebuff("Force-imbalanced")),
-                    Spell.HoT("Rejuvenate", onUnit => Tank, 100, ret => Tank != null && Tank.InCombat),
+                    //Use the ground heal only for a sustained, tightly grouped raid-healing check.
+                    Spell.HealGround("Salvation", ret => Targeting.AoeHealCount >= 4),
 
-                    //Single Target Healing
-                    Spell.Heal("Wandering Mend", 85),
-                    Spell.Heal("Benevolence", 40),
+                    //Maintain preventative effects on the active tank after immediate triage.
+                    Spell.HoT("Force Armor", on => Tank, 100,
+                        ret => Tank != null && Tank.InCombat && !Tank.HasDebuff("Force-imbalanced")),
+                    Spell.HoT("Rejuvenate", on => Tank, 100, ret => Tank != null && Tank.InCombat),
+
+                    //Deliverance is the efficient direct filler. At the earliest levels, Benevolence
+                    //must fill that role because the character has not learned Deliverance yet.
+                    Spell.Heal("Benevolence", 80, ret => Me.Level < 15),
+                    Spell.Heal("Benevolence", 35),
                     Spell.Heal("Deliverance", 80)
                     );
             }

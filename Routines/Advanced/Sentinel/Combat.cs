@@ -71,8 +71,14 @@ namespace DefaultCombat.Routines
                     //Rotation
                     Spell.Cast("Force Kick", ret => Me.Target.IsCasting && CombatHotkeys.EnableInterrupts),
 
-                    //Precision opens the armour-pen window (next 2-3 attacks ignore armour)
-                    Spell.Cast("Precision", ret => Me.Target.Distance <= Distance.Melee),
+                    //Enter the burst window with enough focus and a live Blade Rush Ataru buff.
+                    Spell.Cast("Zealous Strike", ret => Me.ActionPoints <= 5),
+                    Spell.Cast("Blade Rush",
+                        ret => Me.ActionPoints >= 3 &&
+                               (!Me.HasBuff("Blade Rush") || Me.BuffTimeLeft("Blade Rush") <= 2)),
+                    Spell.Cast("Precision",
+                        ret => Me.Target.Distance <= Distance.Melee &&
+                               (Me.HasBuff("Blade Rush") || Me.Level < 30)),
 
                     //Spend the window on the hardest hitters. Opportune Attack autocrits Clashing Blast,
                     //Hand of Justice makes Dispatch free and usable at any health.

@@ -17,14 +17,14 @@ namespace DefaultCombat.Routines
     // 7.x Pyrotech. Me.EnergyPercent is resource REMAINING (100 = no heat, 0 = overheated),
     // so "low EnergyPercent" == "high heat" == conserve.
     /// <summary>
-    ///     PowerTech Pyrotech (DoT melee dps) rotation: keeps the burns up so Rail Shot stays
+    ///     Powertech Pyrotech (DoT melee dps) rotation: keeps the burns up so Rail Shot stays
     ///     usable and spends Superheated Flamethrower stacks on Searing Wave.
     /// </summary>
     public class Pyrotech : RotationBase
     {
         public override CharacterDiscipline Discipline => CharacterDiscipline.FirebugPyrotech;
 
-        public override string Name => "PowerTech Pyrotech";
+        public override string Name => "Powertech Pyrotech";
 
         public override Composite Buffs => new PrioritySelector(
             Spell.Buff("Hunter's Boon")
@@ -78,14 +78,15 @@ namespace DefaultCombat.Routines
                             Spell.Cast("Rapid Shots")
                             )),
 
-                    //Rotation: Searing Wave at 2 stacks -> Immolate (Consuming Flames) -> Rail Shot -> Flaming Fist
+                    //Flaming Fist is the defining short-cooldown strike and helps establish the proc
+                    //state consumed by Searing Wave, Immolate, and Rail Shot.
+                    Spell.Cast("Flaming Fist"),
                     Spell.Cast("Searing Wave", ret => Me.BuffCount("Superheated Flamethrower") >= 2 || Me.Level < 50),
                     Spell.Cast("Immolate", ret => Me.HasBuff("Consuming Flames") || Me.Level < 50),
                     //Rail Shot is only usable on a target suffering periodic damage (or CC'd) unless the
                     //caster has Prototype Rail (Advanced Prototype only). Pyrotech's two DoTs are the only
                     //burns we bring -- there is no aura literally named "Burning".
                     Spell.Cast("Rail Shot", ret => Me.Target.HasMyDebuff("Burning (Incendiary Missile)") || Me.Target.HasMyDebuff("Scorch")),
-                    Spell.Cast("Flaming Fist"),
                     Spell.Cast("Shoulder Cannon", ret => Me.HasBuff("Shoulder Cannon") && Me.Target.StrongOrGreater()),
 
                     //Fallback so a missing proc-passive can never park Immolate

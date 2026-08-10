@@ -46,10 +46,14 @@ namespace DefaultCombat.Routines
                     //Force management (Consuming Darkness applies Weary without Force Surge, so only use it starved)
                     Spell.Buff("Consuming Darkness", ret => Me.ForcePercent <= 25 && !Me.HasDebuff("Weary")),
 
-                    //Offensive cooldowns
-                    Spell.Cast("Recklessness"),
-                    Spell.Cast("Polarity Shift"),
-                    Spell.Buff("Force Speed", ret => Me.InCombat),
+                    //Align throughput cooldowns with an established DoT window on durable targets.
+                    Spell.Cast("Polarity Shift",
+                        ret => Me.Target != null && Me.Target.StrongOrGreater() &&
+                               (Me.Target.HasMyDebuff("Affliction") || !AbilityManager.HasAbility("Affliction"))),
+                    Spell.Cast("Recklessness",
+                        ret => Me.Target != null && Me.Target.StrongOrGreater() &&
+                               (Me.Target.HasMyDebuff("Affliction") || !AbilityManager.HasAbility("Affliction"))),
+                    Spell.Buff("Force Speed", ret => Me.IsMoving),
                     Spell.Buff("Unlimited Power", ret => CombatHotkeys.EnableRaidBuffs),
 
                     //Companion
@@ -76,7 +80,10 @@ namespace DefaultCombat.Routines
                     Spell.Cast("Electrocute",
                         ret => Me.Target.IsCasting && CombatHotkeys.EnableInterrupts && !Me.Target.BossOrGreater()),
 
-                    //DoTs first, everything else in Madness scales off them
+                    //Consume Wrath carried from a previous channel before refreshing setup effects.
+                    Spell.Cast("Demolish", ret => Me.BuffCount("Wrath") >= 4),
+
+                    //DoTs first, everything else in Madness scales off them.
                     Spell.DoT("Affliction", "Affliction"),
                     Spell.DoT("Creeping Terror", "Creeping Terror"),
 

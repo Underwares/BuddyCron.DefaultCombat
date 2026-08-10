@@ -84,11 +84,12 @@ namespace DefaultCombat.Routines
                             Spell.Cast("Rifle Shot")
                             )),
 
-                    //Rotation
+                    //Consume any existing Followthrough window, then use Ambush before the channel.
+                    //The selector returns to Followthrough after either qualifying attack enables it.
                     Spell.Cast("Followthrough"),
-                    Spell.Cast("Penetrating Blasts"),
-                    //Zeroing Shots is a Marksmanship passive; low level chars simply hard cast Ambush
+                    //Zeroing Shots is a Marksmanship passive; low level chars simply hard cast Ambush.
                     Spell.Cast("Ambush", ret => Me.BuffCount("Zeroing Shots") >= 2 || Me.Level < 30),
+                    Spell.Cast("Penetrating Blasts"),
                     Spell.Cast("Takedown", ret => Me.Target.HealthPercent <= 30),
                     //Filler dot -- only worth the energy on things that live long enough
                     Spell.DoT("Corrosive Dart", "Corrosive Dart", 0,

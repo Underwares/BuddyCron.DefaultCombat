@@ -69,14 +69,13 @@ namespace DefaultCombat.Routines
                     //Interrupts
                     Spell.Cast("Force Kick", ret => Me.Target.IsCasting && CombatHotkeys.EnableInterrupts),
 
-                    //Rotation - Plasma Brand / Overhead Slash / Blade Storm / Vigilant Thrust on cooldown.
-                    //Plasma Brand finishes the cooldown on Blade Barrage, so it leads.
-                    Spell.Cast("Plasma Brand"),
-                    Spell.Cast("Blade Barrage"),
+                    //Alternate the repeating Overhead Slash / Blade Storm / Vigilant Thrust core with
+                    //priority slots. Plasma Brand takes the first open slot and resets Blade Barrage;
+                    //Blade Barrage is then consumed in a later slot while multiple burns are active.
                     Spell.Cast("Overhead Slash"),
-
-                    //Blade Storm autocrits at 2 stacks of Force Rush; fall through until then.
+                    Spell.Cast("Plasma Brand"),
                     Spell.Cast("Blade Storm", ret => Me.BuffCount("Force Rush") >= 2 || Me.Level < 40),
+                    Spell.Cast("Blade Barrage"),
                     Spell.Cast("Vigilant Thrust", ret => Me.Target.Distance <= 0.5f),
 
                     //Whirling Blade replaces Dispatch for Vigilance; Keening makes it free and usable
@@ -103,10 +102,10 @@ namespace DefaultCombat.Routines
                 return new Decorator(ret => Targeting.ShouldPbaoe,
                     new PrioritySelector(
                         //Get the burns up first, then spread them with Vigilant Thrust
-                        Spell.Cast("Plasma Brand"),
                         Spell.Cast("Overhead Slash"),
-                        Spell.Cast("Vigilant Thrust", ret => Me.Target.Distance <= 0.5f),
+                        Spell.Cast("Plasma Brand"),
                         Spell.Cast("Blade Storm"),
+                        Spell.Cast("Vigilant Thrust", ret => Me.Target.Distance <= 0.5f),
                         Spell.Cast("Force Sweep", ret => Me.Target.Distance <= 0.5f),
                         Spell.Cast("Cyclone Slash", ret => Me.Target.Distance <= 0.5f),
                         Spell.Cast("Blade Barrage")

@@ -71,12 +71,17 @@ namespace DefaultCombat.Routines
                     Spell.Cast("Mind Snap", ret => Me.Target.IsCasting && CombatHotkeys.EnableInterrupts),
                     Spell.Cast("Force Stun", ret => Me.Target.IsCasting && CombatHotkeys.EnableInterrupts),
 
-                    //Rotation
-                    //Force Breach is only worth spending at 3 stacks of Breaching Shadows (Shadow
-                    //Technique, 30s buff, caps at 3). Before Shadow Technique is trained there are no
-                    //stacks to build, so let low levels use it freely.
+                    //Refresh Clairvoyance before spending charges so Psychokinetic Blast retains its bonuses.
+                    Spell.Cast("Clairvoyant Strike",
+                        ret => Me.ForcePercent >= 25 &&
+                               (!Me.HasBuff("Clairvoyance") || Me.BuffTimeLeft("Clairvoyance") <= 3)),
+
+                    //Spend three Breaching Shadows when that mechanic is active. The zero-stack CanCast
+                    //fallback lets the pre-upgrade low-level version fire without guessing an unlock level.
                     Spell.Cast("Force Breach",
-                        ret => Me.BuffCount("Breaching Shadows") >= 3 || Me.Level < 20),
+                        ret => Me.BuffCount("Breaching Shadows") >= 3 ||
+                               (Me.BuffCount("Breaching Shadows") == 0 &&
+                                AbilityManager.CanCast("Force Breach", Me.Target).Success)),
                     Spell.Cast("Spinning Strike", ret => Me.Target.HealthPercent <= 30 || Me.HasBuff("Stalker's Swiftness")),
                     //Vaulting Slash is the hardest hitting ability - use it on cooldown
                     Spell.Cast("Vaulting Slash"),
@@ -101,7 +106,9 @@ namespace DefaultCombat.Routines
                     new Decorator(ret => Targeting.ShouldAoe,
                         new PrioritySelector(
                             Spell.Cast("Force Breach",
-                                ret => Me.BuffCount("Breaching Shadows") >= 3 || Me.Level < 20),
+                                ret => Me.BuffCount("Breaching Shadows") >= 3 ||
+                                       (Me.BuffCount("Breaching Shadows") == 0 &&
+                                        AbilityManager.CanCast("Force Breach", Me.Target).Success)),
 							Spell.Cast("Cleaving Cut"))),
                     new Decorator(ret => Targeting.ShouldPbaoe,
                         //Whirling Blow is the AoE filler and still procs Shadow Technique

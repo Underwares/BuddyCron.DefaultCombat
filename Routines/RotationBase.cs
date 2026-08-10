@@ -9,11 +9,8 @@ using Reborn.Behaviors.Treesharp;
 namespace DefaultCombat.Routines
 {
     /// <summary>
-    ///     Base class for all combat routines. A rotation identifies itself by
-    ///     <see cref="Discipline"/> (or <see cref="BaseClass"/> for the pre-discipline
-    ///     fallbacks) and exposes its logic as four behavior-tree composites:
-    ///     <see cref="Buffs"/>, <see cref="Cooldowns"/>, <see cref="SingleTarget"/> and
-    ///     <see cref="AreaOfEffect"/>.
+    ///     Base class for a combat-style discipline rotation, exposed as buff, cooldown,
+    ///     single-target, and area-of-effect behavior-tree composites.
     /// </summary>
     public abstract class RotationBase
     {
@@ -38,9 +35,7 @@ namespace DefaultCombat.Routines
         public abstract string Name { get; }
 
         /// <summary>
-        ///     The discipline this rotation implements — the selection key (replaces the old
-        ///     type-name string lookup). <see cref="CharacterDiscipline.None"/> for the
-        ///     pre-discipline base-class rotations in Routines/Basic.
+        ///     Gets the combat-style discipline this rotation implements.
         /// </summary>
         public virtual CharacterDiscipline Discipline => CharacterDiscipline.None;
 

@@ -53,7 +53,5 @@ namespace DefaultCombat.Helpers
         public const int Low = 35;
         /// <summary>Emergency: use defensive cooldowns and medpacs.</summary>
         public const int Critical = 15;
-        /// <summary>A DPS discipline off-heals itself below this percentage.</summary>
-        public const int OffHealThreshold = 40;
     }
 }

@@ -95,8 +95,8 @@ namespace DefaultCombat.Routines
                     Spell.Cast("Rifle Shot",
                         ret => Me.EnergyPercent < 35 && !AbilityManager.CanCast("Adrenaline Probe", Me).Success),
 
-                    //Stealth opener / on cooldown
-                    Spell.Cast("Lethal Strike"),
+                    //Guarantee the stealth opener; the normal on-cooldown use sits after the DoTs.
+                    Spell.Cast("Lethal Strike", ret => Me.IsStealthed),
 
                     //DoT upkeep - 100% uptime is the whole spec. Kept above Toxic Blast / Corrosive
                     //Assault so those never need a debuff-name gate that could stall the priority.
@@ -107,10 +107,12 @@ namespace DefaultCombat.Routines
                         ret => !HoldForOpener &&
                                (!Me.Target.HasMyDebuff("Corrosive Grenade") || Me.Target.DebuffTimeLeft("Corrosive Grenade") <= 3)),
 
-                    //Detonator - also generates Tactical Advantage
+                    //Open the poison amplification window, use Lethal Strike on cooldown, then pair
+                    //Toxic Haze and Corrosive Assault with that window.
                     Spell.Cast("Toxic Blast", ret => !HoldForOpener),
-
-                    //Spend Tactical Advantage
+                    Spell.Cast("Lethal Strike", ret => !HoldForOpener),
+                    Spell.Cast("Toxic Haze", on => Me,
+                        ret => !HoldForOpener && Me.HasBuff("Tactical Advantage")),
                     Spell.Cast("Corrosive Assault", ret => !HoldForOpener && Me.HasBuff("Tactical Advantage")),
 
                     //Build Tactical Advantage
@@ -132,7 +134,8 @@ namespace DefaultCombat.Routines
                 return new Decorator(ret => Targeting.ShouldAoe && !HoldForOpener,
                     new PrioritySelector(
                         Spell.DoT("Corrosive Grenade", "Corrosive Grenade"),
-                        Spell.Cast("Toxic Haze", ret => Me.HasBuff("Tactical Advantage")),
+                        Spell.Cast("Toxic Haze", on => Me,
+                            ret => Me.HasBuff("Tactical Advantage")),
                         Spell.Cast("Noxious Knives"),
                         Spell.Cast("Fragmentation Grenade", ret => Me.EnergyPercent >= 60)
                         ));

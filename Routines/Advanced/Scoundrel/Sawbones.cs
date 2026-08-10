@@ -97,28 +97,33 @@ namespace DefaultCombat.Routines
                     //Emergency - free below 30%
                     Spell.Heal("Emergency Medpac", 30),
 
-                    //Burst triage - costs 1 Upper Hand
-                    Spell.Heal("Kolto Pack", 55, ret => Me.HasBuff("Upper Hand") && Me.EnergyPercent >= 45),
+                    //Burst triage - preserve one Upper Hand outside the emergency range.
+                    Spell.Heal("Kolto Pack", 55,
+                        ret => (Me.BuffCount("Upper Hand") >= 2 || HealTarget.HealthPercent <= 35) &&
+                               Me.EnergyPercent >= 45),
 
-                    //AoE healing
-                    Spell.Heal("Kolto Cloud", on => Tank ?? HealTarget, 90, ret => Targeting.ShouldAoeHeal),
+                    //Slow-release Medpac upkeep - two stacks on the tank and current triage target.
+                    Spell.Heal("Slow-release Medpac", on => Tank, 100,
+                        ret => Tank != null && Tank.InCombat &&
+                               (Tank.BuffCount("Slow-release Medpac") < 2 ||
+                                Tank.BuffTimeLeft("Slow-release Medpac") < 6)),
+                    Spell.Heal("Slow-release Medpac", 90,
+                        ret => HealTarget.BuffCount("Slow-release Medpac") < 2 ||
+                               HealTarget.BuffTimeLeft("Slow-release Medpac") < 6),
+
+                    //Smart and ground AoE healing require a real injured cluster.
+                    Spell.Heal("Kolto Cloud", on => Targeting.AoeHealTarget, 90,
+                        ret => Targeting.ShouldAoeHeal),
                     Spell.HealGround("Kolto Waves"),
 
-                    //Slow-release Medpac upkeep - two stacks is the core of the spec
-                    Spell.Heal("Slow-release Medpac", on => Tank, 100,
-                        ret => Tank != null && (Tank.BuffCount("Slow-release Medpac") < 2 ||
-                                                Tank.BuffTimeLeft("Slow-release Medpac") < 6)),
-                    Spell.Heal("Slow-release Medpac", 95,
-                        ret => HealTarget != null && (HealTarget.BuffCount("Slow-release Medpac") < 2 ||
-                                                      HealTarget.BuffTimeLeft("Slow-release Medpac") < 6)),
-
-                    //Spend surplus Upper Hand
+                    //Spend only surplus Upper Hand outside emergencies.
                     Spell.Heal("Emergency Medpac", 80, ret => Me.BuffCount("Upper Hand") >= 2),
 
-                    //Big single target heal - generates Upper Hand
-                    Spell.Heal("Underworld Medicine", 75),
+                    //Underworld Medicine supplies Upper Hand; preserve the high-regeneration band.
+                    Spell.Heal("Underworld Medicine", 75,
+                        ret => Me.EnergyPercent >= 60 || HealTarget.HealthPercent <= 40),
 
-                    //Energy regen filler
+                    //Free low-level and resource-recovery filler.
                     Spell.Heal("Diagnostic Scan", 95)
                     );
             }

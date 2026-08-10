@@ -42,7 +42,7 @@ namespace DefaultCombat.Routines
 
                     //Enrage is an offensive cooldown for Rage: 6 Rage up front, +1/sec, and it grants
                     //Shockwave (next Smash/Raging Burst is free and hits 15% harder).
-                    Spell.Cast("Enrage", ret => Me.ActionPoints <= 8),
+                    Spell.Cast("Enrage", ret => !Me.HasBuff("Shockwave") || Me.ActionPoints <= 4),
                     Spell.Buff("Unity", ret => Me.Companion != null && Me.HealthPercent <= 15)
                     );
             }
@@ -65,20 +65,23 @@ namespace DefaultCombat.Routines
                     //Interrupts
                     Spell.Cast("Disruption", ret => Me.Target.IsCasting && CombatHotkeys.EnableInterrupts),
 
-                    //Rotation - Raging Burst on cooldown (autocrits with Dominate from Force Charge /
-                    //Obliterate, free + 15% harder with Shockwave from Enrage / Force Crush), then
-                    //Furious Strike immediately after it.
-                    Spell.Cast("Raging Burst"),
+                    //Build Dominate and Shockwave before spending the Raging Burst window. If neither
+                    //proc provider is learned yet, use the low-level burst without guessing a level.
+                    Spell.Cast("Obliterate", ret => !Me.HasBuff("Dominate")),
+                    Spell.Cast("Force Crush", ret => !Me.HasBuff("Shockwave")),
+                    Spell.Cast("Raging Burst",
+                        ret => Me.HasBuff("Shockwave") || Me.HasBuff("Dominate") ||
+                               (!AbilityManager.HasAbility("Obliterate") &&
+                                !AbilityManager.HasAbility("Force Crush"))),
                     Spell.Cast("Furious Strike", ret => Me.ActionPoints >= 5 || Me.HasBuff("Fuming Rage")),
-                    Spell.Cast("Obliterate"),
-                    Spell.Cast("Force Crush"),
 
                     //Execute
                     Spell.Cast("Vicious Throw", ret => Me.Target.HealthPercent <= 30),
 
                     //Smash is the low-level stand-in before Raging Burst is trained, and is still worth
                     //pressing when a pack is stacked on the target.
-                    Spell.Cast("Smash", ret => Me.Level < 25 || Targeting.ShouldPbaoe),
+                    Spell.Cast("Smash",
+                        ret => !AbilityManager.HasAbility("Raging Burst") || Targeting.ShouldPbaoe),
 
                     Spell.Cast("Force Scream"),
                     Spell.Cast("Ravage"),

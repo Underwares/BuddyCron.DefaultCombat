@@ -23,7 +23,7 @@ namespace DefaultCombat.Core
     public static class Targeting
     {
         private const int AoedpsCountNeeded = 3;
-        private const int AoeHealCountNeeded = 2;
+        private const int AoeHealCountNeeded = 3;
 
         //Settings for making target queries
         private const int MaxHealth = Health.Max;
@@ -51,7 +51,7 @@ namespace DefaultCombat.Core
         public static string TankNameCheck;
         /// <summary>The resolved tank, if any.</summary>
         public static HeroCharacter Tank;
-        /// <summary>Best single-target heal recipient this scan.</summary>
+        /// <summary>Best single-target heal recipient this scan, including the local player.</summary>
         public static HeroCharacter HealTarget;
         /// <summary>Best AoE-heal anchor this scan.</summary>
         public static HeroCharacter AoeHealTarget;
@@ -64,13 +64,12 @@ namespace DefaultCombat.Core
         public static Vector3 AoeDpsPoint = Vector3.Zero;
 
         //Counts
-        /// <summary>Heal candidates inside the AoE-heal radius.</summary>
+        /// <summary>Injured heal candidates clustered around <see cref="AoeHealTarget"/>.</summary>
         public static int AoeHealCount;
         /// <summary>Enemies clustered around <see cref="AoeDpsTarget"/>.</summary>
         public static int AoeDpsCount;
         /// <summary>Enemies inside point-blank AoE range of the player.</summary>
         public static int AoePeanutButterCount;
-        private static readonly int s_aoepbCountNeeded = 3;
         /// <summary>True when enough hurt allies cluster to justify AoE healing.</summary>
         public static bool ShouldAoeHeal;
         /// <summary>True when enough enemies cluster to justify targeted AoE.</summary>
@@ -105,121 +104,100 @@ namespace DefaultCombat.Core
             {
                 return new Action(delegate
                 {
-                    //increment shit!
                     cacheCount++;
 
-                    //Reset counts
                     AoeHealCount = 0;
                     AoeDpsCount = 0;
                     AoePeanutButterCount = 0;
-                    //Reset Targets
-                    //     Tank = null;
+                    Tank = null;
                     HealTarget = null;
                     AoeHealTarget = null;
-                    AoeHealPoint = Vector3.Zero;
+                    AoeDpsTarget = null;
                     DispelTarget = null;
+                    AoeHealPoint = Vector3.Zero;
+                    AoeDpsPoint = Vector3.Zero;
+                    ShouldAoeHeal = false;
+                    ShouldAoe = false;
+                    ShouldPbaoe = false;
 
-
-                    //Reset Lists and shit
                     HealCandidates = new List<HeroCharacter>();
                     HealCandidatePoints = new List<Vector3>();
+                    Enemies = new List<HeroCharacter>();
                     EnemyPoints = new List<Vector3>();
                     Tanks = new List<HeroCharacter>();
-                    ShouldAoeHeal = false;
-                    var objects = GetHeroCharacters();
 
-
-                    //update the cache when we feel like it
-                    if (cacheCount >= maxCacheCount)
+                    if (cacheCount >= maxCacheCount || Objects == null)
                         updateObjects();
 
                     if (DefaultCombat.IsHealer)
                     {
-                        foreach (var p in Objects)
+                        foreach (var character in Objects)
                         {
-                            //Doing this shit early
+                            if (!string.IsNullOrEmpty(TankName) && character.Name == TankName)
+                                Tank = character;
 
-                            //    Logger.Write(p.Name);
-                            if (Tank != null && Tank == p)
-                                Tank = p;
+                            if (Tank == null && Me.FocusTargetIsActive && character.NodeId == Me.FocusTargetId)
+                                Tank = character;
 
-                            if (Tank == null && p.Name == TankName && !p.IsDead)
-                                Tank = p;
+                            if (character.IsPartyRoleTank())
+                                Tanks.Add(character);
 
-                            // Got a Focus Tank?
-                            if (Tank == null && Me.FocusTargetIsActive && p.NodeId == Me.FocusTargetId && !p.IsDead)
-                                Tank = p;
-
-                            if (p.IsPartyRoleTank())
-                                Tanks.Add(p);
-
-                            // Damn couldnt find a tank ima be the boss!
-
-                            if (Tank == null && Me.Companion != null)
-                                Tank = Me.Companion;
-
-                            if (Tank == null && Me.Companion == null)
-                                Tank = Me;
-
-                            //Check for HealTarget
-                            //if (p.Health <= p.statHealth && !p.IsDead)
-							if (p.HealthPercent <= MaxHealth && !p.IsDead)
+                            if (character.HealthPercent <= MaxHealth)
                             {
-                                //if (HealTarget == null || p.Health < HealTarget.statHealth)
-								if (HealTarget == null || p.HealthPercent < HealTarget.HealthPercent)
-                                    HealTarget = p;
+                                if (HealTarget == null || character.HealthPercent < HealTarget.HealthPercent)
+                                    HealTarget = character;
 
-                                //Add to candidtates list
-                                HealCandidates.Add(p);
-                                HealCandidatePoints.Add(p.Location);
-
-                                //increment our AOEHealCount
-                                //if (p.Health <= AoeHealHp)
-								if (p.HealthPercent <= AoeHealHp)
-                                    AoeHealCount++;
+                                HealCandidates.Add(character);
+                                if (character.HealthPercent <= AoeHealHp)
+                                    HealCandidatePoints.Add(character.Location);
                             }
 
-                            if (p.NeedsCleanse())
+                            if (character.NeedsCleanse() &&
+                                (DispelTarget == null || character.HealthPercent < DispelTarget.HealthPercent))
                             {
-                                //if (DispelTarget != null && p.Health < DispelTarget.statHealth)
-								if (DispelTarget != null && p.HealthPercent < DispelTarget.HealthPercent)
-                                    DispelTarget = p;
-
-                                if (DispelTarget == null)
-                                    DispelTarget = p;
+                                DispelTarget = character;
                             }
                         }
 
-
-                        //We have checked everyone out, lets set AOE stuff
-                        if (AoeHealCount >= AoeHealCountNeeded)
+                        Tank = Tank ?? Tanks.FirstOrDefault();
+                        if (Tank == null && Me.Companion != null &&
+                            Objects.Any(character => character.NodeId == Me.Companion.NodeId))
                         {
-                            ShouldAoeHeal = true;
-                            //AOEHealTarget
+                            Tank = Me.Companion;
+                        }
+                        Tank = Tank ?? Me;
+
+                        if (HealCandidatePoints.Count >= AoeHealCountNeeded)
+                        {
                             AoeHealTarget = AoeHealLocation(AoeHealDist);
-
-                            //AOEHealPoint
                             if (AoeHealTarget != null)
+                            {
+                                AoeHealCount = PointsAroundPoint(AoeHealTarget.Location, HealCandidatePoints, AoeHealDist);
                                 AoeHealPoint = AoeHealLocation(AoeHealTarget);
+                                ShouldAoeHeal = AoeHealCount >= AoeHealCountNeeded;
+                            }
                         }
                     }
 
-                    foreach (var c in objects)
+                    foreach (var character in GetHeroCharacters())
                     {
-                        //Dps
-                        if (c.IsValidTarget())
-                        {
-                            //Enemies.Add(c);
-                            EnemyPoints.Add(c.Location);
-                        }
+                        if (!character.IsValidTarget())
+                            continue;
 
-                        if (Me.Target != null)
-                            ShouldAoe = CheckDpsAoe(AoedpsCountNeeded, Distance.MeleeAoE, Me.Target.Location);
-
-                        ShouldPbaoe = CheckDpsAoe(AoedpsCountNeeded, Distance.MeleeAoE, Me.Location);
+                        Enemies.Add(character);
+                        EnemyPoints.Add(character.Location);
                     }
 
+                    if (Me.Target != null && Me.Target.IsHostile && !Me.Target.IsDead)
+                    {
+                        AoeDpsTarget = Me.Target;
+                        AoeDpsPoint = Me.Target.Location;
+                        AoeDpsCount = PointsAroundPoint(Me.Target.Location, EnemyPoints, Distance.MeleeAoE);
+                        ShouldAoe = AoeDpsCount >= AoedpsCountNeeded;
+                    }
 
+                    AoePeanutButterCount = PointsAroundPoint(Me.Location, EnemyPoints, Distance.MeleeAoE);
+                    ShouldPbaoe = AoePeanutButterCount >= AoedpsCountNeeded;
                     return RunStatus.Failure;
                 });
             }
@@ -229,41 +207,51 @@ namespace DefaultCombat.Core
         /// assignment when re-invoked on the same character or with no friendly target.</summary>
         public static void SetTank()
         {
-            TankNameStart = Me.Target.ToString();
-            TankNameCheck = TankNameStart.Substring(0, TankNameStart.IndexOf(','));
-
-            if (Me.Target != null && Me.Target.IsFriendly && !TankName.Equals(TankNameCheck))
+            var target = Me.Target;
+            if (target != null && target.IsFriendly && !TankName.Equals(target.Name))
             {
-                TankName = TankNameStart.Substring(0, TankNameStart.IndexOf(','));
+                TankName = target.Name;
                 Logger.Write("Tank set to : " + TankName);
-                Tank = null;
             }
             else
             {
                 TankName = "";
-                Tank = null;
                 Logger.Write("Cleared Tank");
             }
+
+            Tank = null;
         }
 
         private static void updateObjects()
         {
+            Objects = new List<HeroCharacter>();
             if (DefaultCombat.IsHealer)
             {
-                Objects = Me.PartyMembers(false).ToList().FindAll(p =>
-                    !p.IsDead
-                    && p.DistanceSqr < HealingDistance * HealingDistance
-                    && p.InLineOfSight);
+                foreach (var character in Me.PartyMembers(true))
+                    AddHealCandidate(character);
 
-                if (!Objects.Contains(Me))
-                    Objects.Add(Me);
+                AddHealCandidate(Me);
+                AddHealCandidate(Me.Companion);
 
-                if (Me.Companion != null && !Objects.Contains(Me.Companion))
-                    Objects.Add(Me.Companion);
+                var selectedTarget = Me.Target;
+                if (selectedTarget != null && selectedTarget.IsFriendly)
+                    AddHealCandidate(selectedTarget);
             }
 
-            //Reset dat count
             cacheCount = 0;
+        }
+
+        /// <summary>Adds a living, nearby, visible unit once to the cached healing roster.</summary>
+        private static void AddHealCandidate(HeroCharacter character)
+        {
+            if (character == null || character.IsDead || !character.InLineOfSight ||
+                character.DistanceSqr >= HealingDistance * HealingDistance ||
+                Objects.Any(existing => existing.NodeId == character.NodeId))
+            {
+                return;
+            }
+
+            Objects.Add(character);
         }
 
         /// <summary>Snapshot of all NPCs in the object manager as <see cref="HeroCharacter"/>
@@ -291,24 +279,27 @@ namespace DefaultCombat.Core
         /// (tank or self as the baseline), or null when too few cluster to justify an AoE heal.</summary>
         private static HeroCharacter AoeHealLocation(float dist)
         {
-            HeroCharacter pt = Me;
-
-            if (Tank != null)
-                pt = Tank;
+            var injuredCandidates = HealCandidates
+                .Where(character => character.HealthPercent <= AoeHealHp)
+                .ToList();
+            HeroCharacter pt = Tank != null && Tank.HealthPercent <= AoeHealHp
+                ? Tank
+                : injuredCandidates.FirstOrDefault();
+            if (pt == null)
+                return null;
 
             var currentPtCount = PointsAroundPoint(pt.Location, HealCandidatePoints, dist);
-            var tempCount = 0;
-            foreach (var p in HealCandidates)
+            foreach (var candidate in injuredCandidates)
             {
-                tempCount = PointsAroundPoint(p.Location, HealCandidatePoints, dist);
-                if (p.NodeId != Me.NodeId && tempCount > currentPtCount)
+                var candidateCount = PointsAroundPoint(candidate.Location, HealCandidatePoints, dist);
+                if (candidateCount > currentPtCount)
                 {
-                    pt = p;
-                    currentPtCount = tempCount;
+                    pt = candidate;
+                    currentPtCount = candidateCount;
                 }
             }
 
-            return tempCount >= AoeHealCountNeeded ? pt : null;
+            return currentPtCount >= AoeHealCountNeeded ? pt : null;
         }
 
         /// <summary>True when at least <paramref name="minMobs"/> tracked enemies are within

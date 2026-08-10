@@ -73,8 +73,10 @@ namespace DefaultCombat.Routines
                     //Force Exhaustion / Combat Focus grant Singularity. Never spend the procs on anything else.
                     Spell.Cast("Zealous Leap"),
                     Spell.Cast("Force Exhaustion", ret => !Me.HasBuff("Singularity")),
-                    Spell.Cast("Focused Burst", ret => Me.HasBuff("Felling Blow") || Me.Level < 30),
-                    Spell.Cast("Force Sweep", ret => (Me.HasBuff("Felling Blow") || Me.Level < 30) && Me.Target.Distance <= 0.5f),
+                    Spell.Cast("Focused Burst", ret => Me.HasBuff("Felling Blow")),
+                    Spell.Cast("Force Sweep",
+                        ret => (Me.HasBuff("Felling Blow") || !AbilityManager.HasAbility("Focused Burst")) &&
+                               Me.Target.Distance <= 0.5f),
 
                     //Force Lash / Focused Vision windows
                     Spell.Cast("Concentrated Slice"),

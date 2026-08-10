@@ -78,8 +78,9 @@ namespace DefaultCombat.Routines
                             Spell.Cast("Hammer Shot")
                             )),
 
-                    //Rotation: Ion Wave at 2 Pulse Generator -> Plasma Flare (Overcharged Plasma)
-                    //-> High Impact Bolt on a burning target -> Shockstrike
+                    //Shockstrike is the defining short-cooldown strike and helps establish the proc
+                    //state consumed by Ion Wave, Plasma Flare, and High Impact Bolt.
+                    Spell.Cast("Shockstrike"),
                     Spell.Cast("Ion Wave", ret => Me.BuffCount("Pulse Generator") >= 2 || Me.Level < 50),
                     Spell.Cast("Plasma Flare", ret => Me.HasBuff("Overcharged Plasma") || Me.Level < 50),
                     //High Impact Bolt is only usable on a target suffering periodic damage (or CC'd) unless the
@@ -88,7 +89,6 @@ namespace DefaultCombat.Routines
                     Spell.Cast("High Impact Bolt",
                         ret => Me.Target.HasMyDebuff("Burning (Incendiary Round)") ||
                                Me.Target.HasMyDebuff("Plasmatize")),
-                    Spell.Cast("Shockstrike"),
                     Spell.Cast("Shoulder Cannon", ret => Me.HasBuff("Shoulder Cannon") && Me.Target.StrongOrGreater()),
 
                     //Fallback so a missing proc-passive can never park Plasma Flare

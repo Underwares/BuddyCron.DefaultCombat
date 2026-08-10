@@ -96,22 +96,25 @@ namespace DefaultCombat.Routines
                     Spell.Cast("Flurry of Bolts",
                         ret => Me.EnergyPercent < 60 && !AbilityManager.CanCast("Cool Head", Me).Success),
 
-                    //Stealth opener / on cooldown - applies Flechette Round, generates Upper Hand from
-                    //stealth. Positional / Hot and Ready gating is enforced by the game itself, so a
-                    //front-facing Back Blast simply falls through instead of stalling the priority.
-                    Spell.Cast("Back Blast"),
+                    //Guarantee the stealth Back Blast opener before entering the repeatable mini-cycle.
+                    Spell.Cast("Back Blast", ret => Me.IsStealthed),
 
-                    //Bleed upkeep - kept above Blood Boiler so there is always something to detonate
-                    //(and it is the only real damage a sub-20 Scrapper has).
+                    //Bleed upkeep gives Blood Boiler a detonator and remains the low-level fallback.
                     Spell.Cast("Vital Shot",
                         ret => !HoldForOpener &&
                                (!Me.Target.HasMyDebuff("Vital Shot") || Me.Target.DebuffTimeLeft("Vital Shot") <= 2)),
 
-                    //Detonate the bleeds
+                    //Blood Boiler arms for three seconds. Shank Shot occupies the intervening GCD
+                    //before Back Blast detonates it; missing optional abilities simply fall through.
                     Spell.Cast("Blood Boiler", ret => !HoldForOpener),
+                    Spell.Cast("Shank Shot",
+                        ret => !HoldForOpener && Me.Target.HasMyDebuff("Blood Boiler")),
+                    Spell.Cast("Back Blast",
+                        ret => !HoldForOpener && Me.Target.HasMyDebuff("Blood Boiler")),
 
-                    //Spend Upper Hand
+                    //Spend Upper Hand, then use Back Blast normally outside the mini-cycle.
                     Spell.Cast("Sucker Punch", ret => !HoldForOpener && Me.HasBuff("Upper Hand")),
+                    Spell.Cast("Back Blast", ret => !HoldForOpener),
 
                     //Build Upper Hand (Blaster Whip is the pre-Bludgeon low level generator)
                     Spell.Cast("Bludgeon", ret => !HoldForOpener && Me.BuffCount("Upper Hand") < 2),

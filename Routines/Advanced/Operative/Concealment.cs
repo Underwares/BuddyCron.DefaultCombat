@@ -91,19 +91,25 @@ namespace DefaultCombat.Routines
                     Spell.Cast("Rifle Shot",
                         ret => Me.EnergyPercent < 45 && !AbilityManager.CanCast("Adrenaline Probe", Me).Success),
 
-                    //Stealth opener / on cooldown - applies Acid Blade, grants Tactical Advantage from stealth
-                    Spell.Cast("Backstab"),
+                    //Guarantee the stealth Backstab opener before entering the repeatable mini-cycle.
+                    Spell.Cast("Backstab", ret => Me.IsStealthed),
 
-                    //Poison upkeep - kept above Volatile Substance so there is always something to detonate
+                    //Poison upkeep gives Volatile Substance a detonator.
                     Spell.Cast("Corrosive Dart",
                         ret => !HoldForOpener &&
                                (!Me.Target.HasMyDebuff("Corrosive Dart") || Me.Target.DebuffTimeLeft("Corrosive Dart") <= 2)),
 
-                    //Detonate the poisons
+                    //Volatile Substance arms for three seconds. Crippling Slice occupies the intervening
+                    //GCD before Backstab detonates it; missing optional abilities simply fall through.
                     Spell.Cast("Volatile Substance", ret => !HoldForOpener),
+                    Spell.Cast("Crippling Slice",
+                        ret => !HoldForOpener && Me.Target.HasMyDebuff("Volatile Substance")),
+                    Spell.Cast("Backstab",
+                        ret => !HoldForOpener && Me.Target.HasMyDebuff("Volatile Substance")),
 
-                    //Spend Tactical Advantage
+                    //Spend Tactical Advantage, then use Backstab normally outside the mini-cycle.
                     Spell.Cast("Laceration", ret => !HoldForOpener && Me.HasBuff("Tactical Advantage")),
+                    Spell.Cast("Backstab", ret => !HoldForOpener),
 
                     //Build Tactical Advantage (Shiv is the pre-Veiled Strike low level generator)
                     Spell.Cast("Veiled Strike", ret => !HoldForOpener && Me.BuffCount("Tactical Advantage") < 2),

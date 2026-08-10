@@ -81,13 +81,14 @@ namespace DefaultCombat.Routines
                             Spell.Cast("Rifle Shot")
                             )),
 
-                    //Rotation
+                    //Establish Interrogation Probe before the charge/channel cycle. Series of Shots
+                    //refreshes it with the recommended tactical; DoT reapplies it when that refresh is absent.
+                    Spell.DoT("Interrogation Probe", "Interrogation Probe"),
                     Spell.Cast("Explosive Probe"),
                     Spell.Cast("Series of Shots"),
-                    Spell.DoT("Interrogation Probe", "Interrogation Probe"),
+                    Spell.DoTGround("Plasma Probe", 9000),
                     Spell.Cast("EMP Discharge",
                         ret => Me.Target.HasMyDebuff("Interrogation Probe") || Me.Level < 40),
-                    Spell.DoTGround("Plasma Probe", 9000),
                     Spell.Cast("Takedown", ret => Me.Target.HealthPercent <= 30),
                     Spell.Cast("Fragmentation Grenade", ret => Me.EnergyPercent > 60),
                     Spell.DoT("Corrosive Dart", "Corrosive Dart", 0, ret => Me.EnergyPercent > 60),

@@ -22,7 +22,7 @@ namespace DefaultCombat.Routines
     {
         public override CharacterDiscipline Discipline => CharacterDiscipline.Hatred;
 
-        public override string Name => "Assasin Hatred";
+        public override string Name => "Assassin Hatred";
 
         public override Composite Buffs
         {

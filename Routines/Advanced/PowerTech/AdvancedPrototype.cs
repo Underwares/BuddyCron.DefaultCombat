@@ -18,14 +18,14 @@ namespace DefaultCombat.Routines
     // 7.x Advanced Prototype. Me.EnergyPercent is resource REMAINING (100 = no heat, 0 = overheated),
     // so "low EnergyPercent" == "high heat" == conserve.
     /// <summary>
-    ///     PowerTech Advanced Prototype (melee dps) rotation: dumps Energy Lodes into Energy
+    ///     Powertech Advanced Prototype (melee dps) rotation: dumps Energy Lodes into Energy
     ///     Burst and keeps Rail Shot and the Retractable Blade bleed rolling.
     /// </summary>
     public class AdvancedPrototype : RotationBase
     {
         public override CharacterDiscipline Discipline => CharacterDiscipline.AdvancedPrototype;
 
-        public override string Name => "PowerTech Advanced Prototype";
+        public override string Name => "Powertech Advanced Prototype";
 
 
         public override Composite Buffs => new PrioritySelector(
@@ -86,12 +86,13 @@ namespace DefaultCombat.Routines
                             Spell.Cast("Rapid Shots")
                             )),
 
-                    //Rotation: dump 4 Energy Lodes, keep Rail Shot rolling (PPA resets it off
-                    //Rocket Punch / Magnetic Blast), keep the bleed up
-                    Spell.Cast("Energy Burst", ret => Me.BuffCount("Energy Lode") >= 4 || Me.Level < 50),
-                    Spell.Cast("Rail Shot"),
-                    Spell.DoT("Retractable Blade", "Bleeding (Retractable Blade)"),
+                    //Establish delayed damage and the bleed before Rail Shot. Consume a reset before
+                    //another generator can overwrite it, then spend a full four-lode Energy Burst.
                     Spell.Cast("Thermal Detonator"),
+                    Spell.DoT("Retractable Blade", "Bleeding (Retractable Blade)"),
+                    Spell.Cast("Rail Shot", ret => Me.HasBuff("Prototype Particle Accelerator")),
+                    Spell.Cast("Energy Burst", ret => Me.BuffCount("Energy Lode") >= 4),
+                    Spell.Cast("Rail Shot"),
                     Spell.Cast("Shoulder Cannon", ret => Me.HasBuff("Shoulder Cannon") && Me.Target.StrongOrGreater()),
                     Spell.Cast("Rocket Punch"),
 

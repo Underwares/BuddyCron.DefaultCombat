@@ -75,15 +75,16 @@ namespace DefaultCombat.Routines
                     //Set the burst window up: Obliterate grants Dominate (autocrit) + Battle Cry,
                     //Force Crush / Berserk grant Shockwave (free + 15% damage)
                     Spell.Cast("Obliterate",
-                        ret => CombatHotkeys.EnableCharge && (!Me.HasBuff("Dominate") || Me.Level < 30)),
-                    Spell.Cast("Force Crush", ret => !Me.HasBuff("Shockwave") || Me.Level < 30),
+                        ret => CombatHotkeys.EnableCharge && !Me.HasBuff("Dominate")),
+                    Spell.Cast("Force Crush", ret => !Me.HasBuff("Shockwave")),
 
                     //Cash the procs in
                     Spell.Cast("Raging Burst", ret => Me.HasBuff("Shockwave") || Me.HasBuff("Dominate")),
                     Spell.Cast("Furious Strike", ret => Me.ActionPoints >= 5),
                     Spell.Cast("Vicious Throw", ret => Me.Target.HealthPercent <= 30),
                     Spell.Cast("Force Scream",
-                        ret => (Me.HasBuff("Battle Cry") || Me.Level < 30) && Me.Target.Distance <= 1f),
+                        ret => (Me.HasBuff("Battle Cry") || !AbilityManager.HasAbility("Obliterate")) &&
+                               Me.Target.Distance <= 1f),
 
                     //Raging Burst on cooldown even without a proc
                     Spell.Cast("Raging Burst"),
@@ -107,9 +108,10 @@ namespace DefaultCombat.Routines
                 return new Decorator(ret => Targeting.ShouldPbaoe,
                     new PrioritySelector(
                         //Smash is the AoE stand-in for Raging Burst and eats the same procs
-                        Spell.Cast("Force Crush", ret => !Me.HasBuff("Shockwave") || Me.Level < 30),
+                        Spell.Cast("Force Crush", ret => !Me.HasBuff("Shockwave")),
                         Spell.Cast("Smash",
-                            ret => Me.HasBuff("Shockwave") || Me.HasBuff("Dominate") || Me.Level < 30),
+                            ret => Me.HasBuff("Shockwave") || Me.HasBuff("Dominate") ||
+                                   !AbilityManager.HasAbility("Raging Burst")),
                         Spell.Cast("Obliterate", ret => CombatHotkeys.EnableCharge),
                         Spell.Cast("Smash"),
                         Spell.Cast("Dual Saber Throw", ret => Me.Target.Distance <= 1f),

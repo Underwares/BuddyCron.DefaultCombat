@@ -97,8 +97,8 @@ namespace DefaultCombat.Routines
                     Spell.Cast("Flurry of Bolts",
                         ret => Me.EnergyPercent < 35 && !AbilityManager.CanCast("Cool Head", Me).Success),
 
-                    //Stealth opener / on cooldown - generates Upper Hand and buffs the DoT crits
-                    Spell.Cast("Point Blank Shot"),
+                    //Guarantee the stealth opener; the normal on-cooldown use sits after the DoTs.
+                    Spell.Cast("Point Blank Shot", ret => Me.IsStealthed),
 
                     //DoT upkeep - 100% uptime on both bleeds is the whole spec. Kept above the
                     //detonator so Sanguinary Shot always has something to hit.
@@ -109,12 +109,12 @@ namespace DefaultCombat.Routines
                         ret => !HoldForOpener &&
                                (!Me.Target.HasMyDebuff("Shrap Bomb") || Me.Target.DebuffTimeLeft("Shrap Bomb") <= 3)),
 
-                    //Detonator - also generates Upper Hand
+                    //Open the bleed amplification window, use Point Blank Shot on cooldown, then
+                    //spend Upper Hand on Bushwhack and Brutal Shots.
                     Spell.Cast("Sanguinary Shot", ret => !HoldForOpener),
-
-                    //Bushwhack is part of the single target priority in 7.x (spreads/extends the
-                    //bleeds), costs 1 Upper Hand
-                    Spell.Cast("Bushwhack", ret => !HoldForOpener && Me.HasBuff("Upper Hand")),
+                    Spell.Cast("Point Blank Shot", ret => !HoldForOpener),
+                    Spell.Cast("Bushwhack", on => Me,
+                        ret => !HoldForOpener && Me.HasBuff("Upper Hand")),
 
                     //Spend Upper Hand - primary filler. Unfair Advantage makes it free, but the buff
                     //only exists once the passive is trained, hence the plain Upper Hand check too.
@@ -140,7 +140,8 @@ namespace DefaultCombat.Routines
                 return new Decorator(ret => Targeting.ShouldAoe && !HoldForOpener,
                     new PrioritySelector(
                         Spell.DoT("Shrap Bomb", "Shrap Bomb"),
-                        Spell.Cast("Bushwhack", ret => Me.HasBuff("Upper Hand")),
+                        Spell.Cast("Bushwhack", on => Me,
+                            ret => Me.HasBuff("Upper Hand")),
                         Spell.Cast("Lacerating Blast"),
                         Spell.Cast("Thermal Grenade", ret => Me.EnergyPercent >= 60)
                         ));

@@ -41,9 +41,12 @@ namespace DefaultCombat.Routines
                 return new PrioritySelector(
                     Spell.Buff("Determination", ret => Me.IsStunned),
 
-                    //Spend 10 stacks of Supercharge when the heal target actually needs it. Bodyguard's
-                    //spender is "Supercharged Kolto Gas" (abl.bounty_hunter.skill.bodyguard.supercharged_gas_support);
-                    //plain "Supercharged Gas" is the Innovative Ordnance one and never matches here.
+                    //Spend 10 stacks of Supercharge during sustained healing. Current guide text uses
+                    //Supercharged Gas, while the discipline-specific player record and aura use the
+                    //Supercharged Kolto Gas name; exact lookup safely falls through to whichever is known.
+                    Spell.Buff("Supercharged Gas",
+                        ret => Me.InCombat && Me.BuffCount("Supercharge") >= 10
+                               && HealTarget != null && HealTarget.HealthPercent <= 85),
                     Spell.Buff("Supercharged Kolto Gas",
                         ret => Me.InCombat && Me.BuffCount("Supercharge") >= 10
                                && HealTarget != null && HealTarget.HealthPercent <= 85),
@@ -102,36 +105,36 @@ namespace DefaultCombat.Routines
                         //Spell.Cast("Cure", ret => HealTarget.ShouldDispel()), ((New Code Hold off for now))
                         Spell.Cleanse("Cure"),
 
-                        //Keep the shield rolling on whoever we are healing
-                        Spell.Heal("Kolto Shell", on => HealTarget, 100, ret => !HealTarget.HasBuff("Kolto Shell")),
+                        //Maintain the charge-based shell on the active tank and current triage target.
+                        Spell.Heal("Kolto Shell", on => Tank, 100,
+                            ret => Tank != null && Tank.InCombat && !Tank.HasMyBuff("Kolto Shell")),
+                        Spell.Heal("Kolto Shell", 85, ret => !HealTarget.HasMyBuff("Kolto Shell")),
 
-                        //Emergency Scan is instant and cheap, so use it on cooldown
-                        Spell.Heal("Emergency Scan", 90, ret => Me.InCombat),
+                        //Emergency Scan is free and makes the following Healing Scan instant.
+                        Spell.Heal("Emergency Scan", 80, ret => Me.InCombat),
+                        Spell.Heal("Healing Scan", 80,
+                            ret => Me.InCombat && (Me.HasBuff("Emergency Response") ||
+                                                   Me.HasBuff("Supercharged Gas") ||
+                                                   Me.HasBuff("Supercharged Kolto Gas"))),
 
-                        //Procs worth reacting to: Emergency Scan makes the next Healing Scan instant,
-                        //Supercharged Gas turns it into the burst heal
-                        Spell.Heal("Healing Scan", 95, ret => Me.HasBuff("Emergency Response") && Me.InCombat),
-                        //Bodyguard's spender is the ability "Supercharged Kolto Gas"; the aura it grants
-                        //may be named either way, so accept both rather than silently miss the window.
-                        Spell.Heal("Healing Scan", 95,
-                            ret => (Me.HasBuff("Supercharged Kolto Gas") || Me.HasBuff("Supercharged Gas")) && Me.InCombat),
-
-                        //AoE heal / Kolto Residue upkeep (Kolto Missile is cheap for what it heals).
-                        //"Kolto Residue" is only the PASSIVE'S name (abl.bounty_hunter.skill.bodyguard.kolto_residue);
-                        //the aura it actually lands on the ally is "Invigorated" (Buff, 45s) -- verified against the ability data.
-                        new Decorator(ctx => HealTarget != null && Targeting.ShouldAoeHeal,
-                            Spell.CastOnGround("Kolto Missile", on => HealTarget.Location, ret => Me.InCombat)),
+                        //Channels and clustered healing precede ordinary fillers.
+                        Spell.Heal("Progressive Scan", 75, ret => !Me.IsMoving),
+                        Spell.HealGround("Kolto Missile", ret => Me.InCombat),
                         new Decorator(ctx => HealTarget != null,
                             Spell.CastOnGround("Kolto Missile", on => HealTarget.Location,
-                                ret => Me.InCombat && HealTarget.HealthPercent < 90 && !HealTarget.HasMyBuff("Invigorated"))),
+                                ret => Me.InCombat && HealTarget.HealthPercent < 85 &&
+                                       !HealTarget.HasMyBuff("Invigorated"))),
 
-                        //Single target priority
-                        Spell.Heal("Progressive Scan", 90, ret => !Me.IsMoving),                //channelled, so stand still
-                        Spell.Heal("Healing Scan", 85),                                         //Critical Efficiency makes this cheap
-                        Spell.Heal("Rapid Scan", 65),                                           //expensive panic heal
-                        Spell.Heal("Rapid Scan", 85, ret => Me.EnergyPercent >= 60),
+                        //Rapid Scan builds Critical Efficiency. Spend capped stacks before another
+                        //Rapid Scan can win the priority; before the passive is learned, use Healing
+                        //Scan as an ordinary cooldown heal.
+                        Spell.Heal("Healing Scan", 75,
+                            ret => Me.BuffCount("Critical Efficiency") >= 3 ||
+                                   !AbilityManager.HasAbility("Critical Efficiency")),
+                        Spell.Heal("Rapid Scan", 75, ret => Me.EnergyPercent >= 60),
+                        Spell.Heal("Rapid Scan", 40, ret => Me.EnergyPercent >= 45),
 
-                        //Filler -- free, instant, vents heat and builds Supercharge
+                        //Free, instant recovery filler and the only heal available at the earliest levels.
                         Spell.Heal("Kolto Shot", 95)
                         );
             }

@@ -100,7 +100,7 @@ namespace DefaultCombat.Core
                 new Decorator(
                     ret =>
                         (reqs == null || reqs(ret)) && location != null && location(ret) != Vector3.Zero &&
-                        AbilityManager.CanCast(spell, BuddyCron.Core.Player.Target).Success,
+                        AbilityManager.CanCast(spell, BuddyCron.Core.Player.Target ?? BuddyCron.Core.Player).Success,
                     new Action(ret => { AbilityManager.Cast(spell, location(ret)); }));
         }
 
@@ -198,18 +198,11 @@ namespace DefaultCombat.Core
 
         #region Heal
 
-        /// <summary>Targets <paramref name="onUnit"/>; always true so it can sit inside decorator conditions.</summary>
-        private static bool Target(HeroCharacter onUnit)
-        {
-            onUnit.SetTarget();
-            return true;
-        }
-
-        /// <summary>Targets and casts the cleanse <paramref name="spell"/> on the current dispel target.</summary>
+        /// <summary>Casts the cleanse <paramref name="spell"/> on the current dispel target.</summary>
         public static Composite Cleanse(string spell, Selection<bool> reqs = null)
         {
             return new Decorator(
-                ret => Targeting.DispelTarget != null && (reqs == null || reqs(ret)) && Target(Targeting.DispelTarget),
+                ret => Targeting.DispelTarget != null && (reqs == null || reqs(ret)),
                 Cast(spell, ret => Targeting.DispelTarget, reqs));
         }
 
@@ -220,13 +213,12 @@ namespace DefaultCombat.Core
             return Heal(spell, onUnit => Targeting.HealTarget, hp, reqs);
         }
 
-        /// <summary>Targets and heals the chosen unit when at or below <paramref name="hp"/> percent health.</summary>
+        /// <summary>Heals the chosen unit when at or below <paramref name="hp"/> percent health.</summary>
         public static Composite Heal(string spell, UnitSelectionDelegate onUnit, int hp = 100, Selection<bool> reqs = null)
         {
             return new Decorator(
-                ret =>
-                    onUnit != null && onUnit(ret) != null && (reqs == null || reqs(ret)) && onUnit(ret).HealthPercent <= hp &&
-                    Target(onUnit(ret)),
+                ret => onUnit != null && onUnit(ret) != null && (reqs == null || reqs(ret)) &&
+                       onUnit(ret).HealthPercent <= hp,
                 Cast(spell, onUnit, reqs));
         }
 
@@ -235,8 +227,7 @@ namespace DefaultCombat.Core
         public static Composite HealAoe(string spell, Selection<bool> reqs = null)
         {
             return new Decorator(
-				//ret => (reqs == null || reqs(ret)) && Targeting.ShouldAoeHeal && Targeting.AoeHealTarget != null,
-                ret => (reqs == null || reqs(ret)) && Targeting.ShouldAoe && Targeting.AoeHealTarget != null,
+                ret => (reqs == null || reqs(ret)) && Targeting.ShouldAoeHeal && Targeting.AoeHealTarget != null,
                 Cast(spell, onUnit => Targeting.AoeHealTarget, reqs));
         }
 
@@ -263,10 +254,8 @@ namespace DefaultCombat.Core
         public static Composite HealGround(string spell, CanRunDecoratorDelegate reqs = null)
         {
             return new Decorator(
-                ret =>
-                    Targeting.AoeHealPoint != Vector3.Zero && (reqs == null || reqs(ret)) &&
-					//Targeting.ShouldAoeHeal,
-                    Targeting.ShouldAoe,
+                ret => Targeting.AoeHealPoint != Vector3.Zero && (reqs == null || reqs(ret)) &&
+                       Targeting.ShouldAoeHeal,
                 CastOnGround(spell, ret => Targeting.AoeHealPoint, ret => true));
         }
 

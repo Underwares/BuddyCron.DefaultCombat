@@ -2,6 +2,7 @@
 // See the file LICENSE for the source code's detailed license
 
 using System;
+using System.Linq;
 using BuddyCron;
 using BuddyCron.Inheritables;
 using BuddyCron.Managers;
@@ -16,10 +17,14 @@ namespace DefaultCombat
     /// the pull/combat/rest behavior trees.</summary>
     public class DefaultCombat : CombatRoutine
     {
-        /// <summary>True when the active rotation is a healing discipline; targeting uses it to scan allies.</summary>
-        public static bool IsHealer;
+        /// <summary>True when the active rotation is a healing discipline.</summary>
+        public static bool IsHealer { get; private set; }
+
         private static readonly InventoryManagerItem s_medPack = new InventoryManagerItem("Medpac", 90);
-        private static readonly CharacterDiscipline[] s_allDisciplines = Enum.GetValues<CharacterDiscipline>();
+        private static readonly CharacterDiscipline[] s_allDisciplines = Enum.GetValues<CharacterDiscipline>()
+            .Where(discipline => discipline != CharacterDiscipline.None &&
+                                 discipline != CharacterDiscipline.CanNotBeDetermined)
+            .ToArray();
         private Composite _combat;
         private Composite _ooc;
         private Composite _pull;
@@ -34,8 +39,7 @@ namespace DefaultCombat
         /// <summary>Routine name shown in logs and the UI.</summary>
         public override string Name => "DefaultCombat";
 
-        /// <summary>All disciplines: a rotation exists for every discipline (and a basic one per
-        /// base class for pre-discipline characters), so this routine supports everything.</summary>
+        /// <summary>All current combat-style disciplines; obsolete origin/basic classes are excluded.</summary>
         public override CharacterDiscipline[] Class => s_allDisciplines;
 
         /// <summary>Ranged pull distance (not yet user-configurable); melee rotations close the
@@ -63,14 +67,15 @@ namespace DefaultCombat
 
             Logger.Write("Rotation Selected : " + b.Name);
 
-            if (me.IsHealer())
-            {
-                IsHealer = true;
+            IsHealer = me.IsHealer();
+
+            if (IsHealer)
                 Logger.Write("Healing Enabled");
-            }
 
             _ooc = new Decorator(ret => !BuddyCron.Core.Player.IsDead && !BuddyCron.Core.Player.IsMounted && !CombatHotkeys.PauseRotation,
                 new PrioritySelector(
+                    Targeting.ScanTargets,
+                    new Decorator(ret => IsHealer, b.AreaOfEffect),
                     Spell.Buff(BuddyCron.Core.Player.SelfBuffName()),
                     b.Buffs,
                     Rest.HandleRest,
@@ -83,10 +88,12 @@ namespace DefaultCombat
                     s_medPack.UseItem(ret => BuddyCron.Core.Player.HealthPercent <= 30),
                     Targeting.ScanTargets,
                     b.Cooldowns,
-                    new Decorator(ret => CombatHotkeys.EnableAoe, b.AreaOfEffect),
+                    new Decorator(ret => IsHealer || CombatHotkeys.EnableAoe, b.AreaOfEffect),
                     b.SingleTarget));
 
-            _pull = new Decorator(ret => !CombatHotkeys.PauseRotation && !MovementDisabled || IsHealer && !Grind, _combat);
+            _pull = new Decorator(
+                ret => !CombatHotkeys.PauseRotation && (!MovementDisabled || IsHealer && !Grind),
+                _combat);
 
             // RoutineManager.ResetHooks wires these into the TreeHooks locations the brain runs.
             CombatBehavior = _combat;

@@ -69,8 +69,14 @@ namespace DefaultCombat.Routines
                     //Rotation
                     Spell.Cast("Disruption", ret => Me.Target.IsCasting && CombatHotkeys.EnableInterrupts),
 
-                    //Ferocity opens the armour-pen window (next 2-3 attacks ignore armour)
-                    Spell.Cast("Ferocity", ret => Me.Target.Distance <= Distance.Melee),
+                    //Enter the burst window with enough rage and a live Massacre Ataru buff.
+                    Spell.Cast("Battering Assault", ret => Me.ActionPoints <= 5),
+                    Spell.Cast("Massacre",
+                        ret => Me.ActionPoints >= 3 &&
+                               (!Me.HasBuff("Massacre") || Me.BuffTimeLeft("Massacre") <= 2)),
+                    Spell.Cast("Ferocity",
+                        ret => Me.Target.Distance <= Distance.Melee &&
+                               (Me.HasBuff("Massacre") || Me.Level < 30)),
 
                     //Spend the window on the hardest hitters, in guide order
                     Spell.Cast("Devastating Blast", ret => Me.HasBuff("Execute") || Me.Level < 30),

@@ -40,10 +40,14 @@ namespace DefaultCombat.Routines
                     Spell.Buff("Force Mend", ret => Me.HealthPercent <= 60),
                     Spell.Buff("Force Armor", ret => Me.InCombat && !Me.HasDebuff("Force-imbalanced")),
 
-                    //Offensive cooldowns -- Force Potency is meant to line up with Turbulence
+                    //Start Mental Alacrity before applying the long-lived DoT. Hold Force Potency
+                    //for Telekinetic Gust's Force Gust window instead of wasting charges on setup.
                     Spell.Buff("Force Empowerment", ret => CombatHotkeys.EnableRaidBuffs),
-                    Spell.Cast("Force Potency"),
-                    Spell.Cast("Mental Alacrity"),
+                    Spell.Cast("Mental Alacrity",
+                        ret => Me.InCombat && Me.Target != null && Me.Target.StrongOrGreater() &&
+                               (!Me.Target.HasMyDebuff("Weaken Mind") || Me.HasBuff("Force Gust"))),
+                    Spell.Cast("Force Potency",
+                        ret => Me.HasBuff("Force Gust") || !AbilityManager.HasAbility("Telekinetic Gust")),
 
                     //Force management
                     Spell.Cast("Vindicate", ret => Me.ForcePercent < 50 && Me.HealthPercent > 50 && !Me.HasDebuff("Weary")),
@@ -88,8 +92,8 @@ namespace DefaultCombat.Routines
                     //Mind Crush on cooldown even without the Force Gust proc
                     Spell.Cast("Mind Crush"),
 
-                    //Telekinetic Blitz is an ability-tree choice (lvl 68), charges come from Force Speed
-                    Spell.Cast("Telekinetic Blitz"),
+                    //Telekinetic Blitz is a movement fallback unless a tactical-specific AoE policy owns it.
+                    Spell.Cast("Telekinetic Blitz", ret => Me.IsMoving),
 
                     //Fillers -- Telekinetic Burst is the discipline filler, Disturbance covers low levels,
                     //Saber Strike is the free attack so the rotation can never stall

@@ -40,10 +40,14 @@ namespace DefaultCombat.Routines
                     Spell.Buff("Force Mend", ret => Me.HealthPercent <= 60),
                     Spell.Buff("Force Armor", ret => Me.InCombat && !Me.HasDebuff("Force-imbalanced")),
 
-                    //Offensive cooldowns
+                    //Align throughput cooldowns with an established DoT window on durable targets.
                     Spell.Buff("Force Empowerment", ret => CombatHotkeys.EnableRaidBuffs),
-                    Spell.Cast("Mental Alacrity"),
-                    Spell.Cast("Force Potency"),
+                    Spell.Cast("Mental Alacrity",
+                        ret => Me.Target != null && Me.Target.StrongOrGreater() &&
+                               (Me.Target.HasMyDebuff("Weaken Mind") || !AbilityManager.HasAbility("Weaken Mind"))),
+                    Spell.Cast("Force Potency",
+                        ret => Me.Target != null && Me.Target.StrongOrGreater() &&
+                               (Me.Target.HasMyDebuff("Weaken Mind") || !AbilityManager.HasAbility("Weaken Mind"))),
 
                     //Force management
                     Spell.Cast("Vindicate", ret => Me.ForcePercent < 50 && Me.HealthPercent > 50 && !Me.HasDebuff("Weary")),
@@ -87,8 +91,8 @@ namespace DefaultCombat.Routines
                     //Dump leftover Presence of Mind stacks into an instant Disturbance
                     Spell.Cast("Disturbance", ret => Me.BuffCount("Presence of Mind") >= 4),
 
-                    //Telekinetic Blitz is an ability-tree choice (lvl 68), charges come from Force Speed
-                    Spell.Cast("Telekinetic Blitz"),
+                    //Telekinetic Blitz is a movement fallback unless a tactical-specific AoE policy owns it.
+                    Spell.Cast("Telekinetic Blitz", ret => Me.IsMoving),
 
                     //Fillers -- Telekinetic Throw is the builder/filler channel; Disturbance, Project and
                     //Saber Strike keep low-level characters from ever stalling

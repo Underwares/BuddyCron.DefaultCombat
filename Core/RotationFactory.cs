@@ -6,7 +6,6 @@ using System.Collections.Generic;
 using System.Reflection;
 using BuddyCron;
 using DefaultCombat.Routines;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace DefaultCombat.Core
 {
@@ -33,9 +32,8 @@ namespace DefaultCombat.Core
             }
         }
 
-        /// <summary>The rotation for <paramref name="discipline"/>, falling back to the base-class
-        /// rotation of <paramref name="characterClass"/> when no discipline is chosen (low level)
-        /// or no rotation implements it. Null only if the class is unknown too.</summary>
+        /// <summary>Creates the rotation registered for <paramref name="discipline"/>.
+        /// Throws when the discipline is indeterminate or unsupported.</summary>
         public RotationBase Build(CharacterDiscipline discipline)
         {
             if (discipline != CharacterDiscipline.None
@@ -45,7 +43,7 @@ namespace DefaultCombat.Core
                 return (RotationBase)Activator.CreateInstance(byDiscipline);
             }
 
-            throw new InvalidOperationException("Class not yet implemented");
+            throw new InvalidOperationException($"No combat-style rotation is registered for {discipline}.");
         }
 
     }
