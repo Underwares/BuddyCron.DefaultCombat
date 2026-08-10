@@ -9,6 +9,7 @@ using BuddyCron.Navigation;
 using BuddyCron.Objects;
 using Reborn.Utilities;
 using Reborn.Behaviors.Treesharp;
+using DefaultCombat.Helpers;
 using Action = Reborn.Behaviors.Treesharp.Action;
 
 namespace DefaultCombat.Core
@@ -18,7 +19,7 @@ namespace DefaultCombat.Core
     {
         //public static Composite CloseDistance(float range)
         //{
-        //    return new Decorator(ret => !DefaultCombat.MovementDisabled && BuddyCron.Core.Player.Target != null,
+        //    return new Decorator(ret => !RotationRuntime.MovementDisabled && BuddyCron.Core.Player.Target != null,
         //        new PrioritySelector(
         //            new Decorator(ret => BuddyCron.Core.Player.Target.Distance < range,
         //                new Action(delegate
@@ -38,7 +39,7 @@ namespace DefaultCombat.Core
         public static Composite CloseDistance(float range)
         {
             return new Decorator(
-                ret => !DefaultCombat.MovementDisabled,
+                ret => !RotationRuntime.MovementDisabled,
                 CommonBehaviors.MoveAndStop(
                     location => BuddyCron.Core.Player.Target.Location,
                     ret => range,

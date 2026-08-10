@@ -30,7 +30,7 @@ namespace DefaultCombat.Routines
         ///     always the (auto-crit, Upper-Hand-generating, Flechette Round applying) stealth Back
         ///     Blast. If Back Blast is on cooldown we drop the hold rather than stall out of stealth.
         /// </summary>
-        private static bool HoldForOpener => Me.IsStealthed && Me.Target != null &&
+        private bool HoldForOpener => Me.IsStealthed && Me.Target != null &&
                                              AbilityManager.CanCast("Back Blast", Me.Target).Success;
 
         public override Composite Buffs
@@ -39,7 +39,7 @@ namespace DefaultCombat.Routines
             {
                 return new PrioritySelector(
                     Spell.Buff("Lucky Shots"),
-					Spell.Buff("Stealth", ret => !Rest.KeepResting() && !DefaultCombat.MovementDisabled && !Me.IsMounted)
+					Spell.Buff("Stealth", ret => !Rest.KeepResting() && !RotationRuntime.MovementDisabled && !Me.IsMounted)
                     );
             }
         }

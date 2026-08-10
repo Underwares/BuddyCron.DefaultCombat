@@ -31,7 +31,7 @@ namespace DefaultCombat.Routines
         ///     is always the stealth Point Blank Shot (auto-crit, generates Upper Hand and Cut to the
         ///     Quick). If it is on cooldown we drop the hold rather than stall out of stealth.
         /// </summary>
-        private static bool HoldForOpener => Me.IsStealthed && Me.Target != null &&
+        private bool HoldForOpener => Me.IsStealthed && Me.Target != null &&
                                              AbilityManager.CanCast("Point Blank Shot", Me.Target).Success;
 
         public override Composite Buffs
@@ -40,7 +40,7 @@ namespace DefaultCombat.Routines
             {
                 return new PrioritySelector(
                     Spell.Buff("Lucky Shots"),
-					Spell.Buff("Stealth", ret => !Rest.KeepResting() && !DefaultCombat.MovementDisabled && !Me.IsMounted)
+					Spell.Buff("Stealth", ret => !Rest.KeepResting() && !RotationRuntime.MovementDisabled && !Me.IsMounted)
                     );
             }
         }

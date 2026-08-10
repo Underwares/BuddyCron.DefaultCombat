@@ -129,7 +129,7 @@ namespace DefaultCombat.Core
                     if (cacheCount >= maxCacheCount || Objects == null)
                         updateObjects();
 
-                    if (DefaultCombat.IsHealer)
+                    if (RotationRuntime.IsHealer)
                     {
                         foreach (var character in Objects)
                         {
@@ -225,7 +225,7 @@ namespace DefaultCombat.Core
         private static void updateObjects()
         {
             Objects = new List<HeroCharacter>();
-            if (DefaultCombat.IsHealer)
+            if (RotationRuntime.IsHealer)
             {
                 foreach (var character in Me.PartyMembers(true))
                     AddHealCandidate(character);

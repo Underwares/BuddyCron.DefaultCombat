@@ -55,7 +55,7 @@ namespace DefaultCombat.Routines
             {
                 return new PrioritySelector(
                     Spell.Cast("Force Charge", ret => CombatHotkeys.EnableCharge && Me.Target.Distance >= 1f),
-                    Spell.Cast("Saber Throw", ret => !DefaultCombat.MovementDisabled && Me.Target.Distance > .4f && Me.Target.Distance <= 3f),
+                    Spell.Cast("Saber Throw", ret => !RotationRuntime.MovementDisabled && Me.Target.Distance > .4f && Me.Target.Distance <= 3f),
 
                     //Movement
                     CombatMovement.CloseDistance(Distance.Melee),

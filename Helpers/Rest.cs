@@ -117,7 +117,7 @@ namespace DefaultCombat.Helpers
         public static bool NeedRest()
         {
             var resource = NormalizedResource();
-            return !DefaultCombat.MovementDisabled && !Me.InCombat && (resource < 50 || Me.HealthPercent < 90 || Me.Companion is { IsDead: false, HealthPercent: < 90 });
+            return !RotationRuntime.MovementDisabled && !Me.InCombat && (resource < 50 || Me.HealthPercent < 90 || Me.Companion is { IsDead: false, HealthPercent: < 90 });
         }
 
         /// <summary>True while resting should continue: still out of combat and anything
@@ -125,7 +125,7 @@ namespace DefaultCombat.Helpers
         public static bool KeepResting()
         {
             var resource = NormalizedResource();
-            return !DefaultCombat.MovementDisabled && !Me.InCombat && (resource < 100 || Me.HealthPercent < 100 || Me.Companion is
+            return !RotationRuntime.MovementDisabled && !Me.InCombat && (resource < 100 || Me.HealthPercent < 100 || Me.Companion is
             {
                 IsDead: false, HealthPercent: < 100
             });

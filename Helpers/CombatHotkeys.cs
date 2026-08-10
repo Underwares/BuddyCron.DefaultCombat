@@ -12,6 +12,8 @@ namespace DefaultCombat.Helpers
     /// F4–F8/F12 hotkeys.</summary>
     public static class CombatHotkeys
     {
+        private static bool s_initialized;
+
         /// <summary>Allow AoE abilities in the rotation.</summary>
         public static bool EnableAoe;
         /// <summary>Suspend the rotation entirely.</summary>
@@ -23,9 +25,15 @@ namespace DefaultCombat.Helpers
         /// <summary>Keep raid-wide buffs applied.</summary>
         public static bool EnableRaidBuffs;
 
-        /// <summary>Resets all toggles to their defaults and registers the hotkeys.</summary>
+        /// <summary>Sets the default toggles and registers the shared hotkeys once.</summary>
         public static void Initialize()
         {
+            if (s_initialized)
+            {
+                return;
+            }
+            s_initialized = true;
+
             EnableAoe = true;
             PauseRotation = false;
             EnableInterrupts = true;
