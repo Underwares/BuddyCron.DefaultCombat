@@ -7,11 +7,11 @@ using BuddyCron.Helpers;
 using BuddyCron.Managers;
 using BuddyCron.Navigation;
 using BuddyCron.Objects;
+using DefaultCombat.Behaviors;
 using Reborn.Utilities;
 using Reborn.Behaviors.Treesharp;
-using DefaultCombat.Core;
 using DefaultCombat.Helpers;
-using Targeting = DefaultCombat.Core.Targeting;
+using Targeting = DefaultCombat.Behaviors.Targeting;
 
 namespace DefaultCombat.Routines
 {
@@ -31,8 +31,8 @@ namespace DefaultCombat.Routines
         ///     is always the stealth Point Blank Shot (auto-crit, generates Upper Hand and Cut to the
         ///     Quick). If it is on cooldown we drop the hold rather than stall out of stealth.
         /// </summary>
-        private bool HoldForOpener => Me.IsStealthed && Me.Target != null &&
-                                             AbilityManager.CanCast("Point Blank Shot", Me.Target).Success;
+        private bool HoldForOpener => Core.Player.IsStealthed && Core.Player.Target != null &&
+                                             AbilityManager.CanCast("Point Blank Shot", Core.Player.Target).Success;
 
         public override Composite Buffs
         {
@@ -40,7 +40,7 @@ namespace DefaultCombat.Routines
             {
                 return new PrioritySelector(
                     Spell.Buff("Lucky Shots"),
-					Spell.Buff("Stealth", ret => !Rest.KeepResting() && !RotationRuntime.MovementDisabled && !Me.IsMounted)
+					Spell.Buff("Stealth", ret => !Rest.KeepResting() && !RotationRuntime.MovementDisabled && !Core.Player.IsMounted)
                     );
             }
         }
@@ -50,28 +50,28 @@ namespace DefaultCombat.Routines
             get
             {
                 return new PrioritySelector(
-                    Spell.Buff("Escape", ret => Me.IsStunned),
+                    Spell.Buff("Escape", ret => Core.Player.IsStunned),
 
                     //Raid buff - costs 1 Upper Hand
-                    Spell.Buff("Stack the Deck", ret => CombatHotkeys.EnableRaidBuffs && Me.HasBuff("Upper Hand")),
+                    Spell.Buff("Stack the Deck", ret => CombatHotkeys.EnableRaidBuffs && Core.Player.HasBuff("Upper Hand")),
 
                     //Energy / Upper Hand economy
-                    Spell.Cast("Cool Head", ret => Me.EnergyPercent <= 45),
-                    Spell.Cast("Pugnacity", ret => Me.InCombat && Me.BuffCount("Upper Hand") < 2),
+                    Spell.Cast("Cool Head", ret => Core.Player.EnergyPercent <= 45),
+                    Spell.Cast("Pugnacity", ret => Core.Player.InCombat && Core.Player.BuffCount("Upper Hand") < 2),
 
                     //Ability tree choice (lvl 43) - resets Pugnacity / off-heals, save it for real fights
                     Spell.Buff("Hot Streak",
-                        ret => Me.InCombat && Me.Target != null && Me.Target.StrongOrGreater()),
+                        ret => Core.Player.InCombat && Core.Player.Target != null && Core.Player.Target.StrongOrGreater()),
 
                     //Defensives
-                    Spell.Buff("Defense Screen", ret => Me.HealthPercent <= 80),
-                    Spell.Buff("Dodge", ret => Me.HealthPercent <= 50),
+                    Spell.Buff("Defense Screen", ret => Core.Player.HealthPercent <= 80),
+                    Spell.Buff("Dodge", ret => Core.Player.HealthPercent <= 50),
 
                     //Off-heals (Scoundrels keep these in every spec)
-                    Spell.Cast("Kolto Pack", on => Me, ret => Me.HealthPercent <= 40 && Me.HasBuff("Upper Hand")),
-                    Spell.HoT("Slow-release Medpac", on => Me, 60),
+                    Spell.Cast("Kolto Pack", on => Core.Player, ret => Core.Player.HealthPercent <= 40 && Core.Player.HasBuff("Upper Hand")),
+                    Spell.HoT("Slow-release Medpac", on => Core.Player, 60),
 
-                    Spell.Buff("Unity", ret => Me.Companion != null && Me.HealthPercent <= 15)
+                    Spell.Buff("Unity", ret => Core.Player.Companion != null && Core.Player.HealthPercent <= 15)
                     );
             }
         }
@@ -82,50 +82,50 @@ namespace DefaultCombat.Routines
             {
                 return new PrioritySelector(
                     //Gap closer (ability tree choice, lvl 68)
-                    Spell.Cast("Trick Move", ret => CombatHotkeys.EnableCharge && Me.Target.Distance > .4f),
+                    Spell.Cast("Trick Move", ret => CombatHotkeys.EnableCharge && Core.Player.Target.Distance > .4f),
 
                     //Movement
                     CombatMovement.CloseDistance(Distance.Melee),
 
                     //Legacy Heroic Moment Abilities --will only be active when user initiates Heroic Moment--
-                    HeroicComposite,
+                    RotationRuntime.HeroicMoment,
 
                     //Interrupt
-                    Spell.Cast("Distraction", ret => Me.Target.IsCasting && CombatHotkeys.EnableInterrupts),
+                    Spell.Cast("Distraction", ret => Core.Player.Target.IsCasting && CombatHotkeys.EnableInterrupts),
 
                     //Energy floor - free filler while Cool Head is down
                     Spell.Cast("Flurry of Bolts",
-                        ret => Me.EnergyPercent < 35 && !AbilityManager.CanCast("Cool Head", Me).Success),
+                        ret => Core.Player.EnergyPercent < 35 && !AbilityManager.CanCast("Cool Head", Core.Player).Success),
 
                     //Guarantee the stealth opener; the normal on-cooldown use sits after the DoTs.
-                    Spell.Cast("Point Blank Shot", ret => Me.IsStealthed),
+                    Spell.Cast("Point Blank Shot", ret => Core.Player.IsStealthed),
 
                     //DoT upkeep - 100% uptime on both bleeds is the whole spec. Kept above the
                     //detonator so Sanguinary Shot always has something to hit.
                     Spell.Cast("Vital Shot",
                         ret => !HoldForOpener &&
-                               (!Me.Target.HasMyDebuff("Vital Shot") || Me.Target.DebuffTimeLeft("Vital Shot") <= 3)),
+                               (!Core.Player.Target.HasMyDebuff("Vital Shot") || Core.Player.Target.DebuffTimeLeft("Vital Shot") <= 3)),
                     Spell.Cast("Shrap Bomb",
                         ret => !HoldForOpener &&
-                               (!Me.Target.HasMyDebuff("Shrap Bomb") || Me.Target.DebuffTimeLeft("Shrap Bomb") <= 3)),
+                               (!Core.Player.Target.HasMyDebuff("Shrap Bomb") || Core.Player.Target.DebuffTimeLeft("Shrap Bomb") <= 3)),
 
                     //Open the bleed amplification window, use Point Blank Shot on cooldown, then
                     //spend Upper Hand on Bushwhack and Brutal Shots.
                     Spell.Cast("Sanguinary Shot", ret => !HoldForOpener),
                     Spell.Cast("Point Blank Shot", ret => !HoldForOpener),
-                    Spell.Cast("Bushwhack", on => Me,
-                        ret => !HoldForOpener && Me.HasBuff("Upper Hand")),
+                    Spell.Cast("Bushwhack", on => Core.Player,
+                        ret => !HoldForOpener && Core.Player.HasBuff("Upper Hand")),
 
                     //Spend Upper Hand - primary filler. Unfair Advantage makes it free, but the buff
                     //only exists once the passive is trained, hence the plain Upper Hand check too.
                     Spell.Cast("Brutal Shots",
-                        ret => !HoldForOpener && (Me.HasBuff("Unfair Advantage") || Me.HasBuff("Upper Hand"))),
+                        ret => !HoldForOpener && (Core.Player.HasBuff("Unfair Advantage") || Core.Player.HasBuff("Upper Hand"))),
 
                     //Build Upper Hand
-                    Spell.Cast("Blaster Whip", ret => !HoldForOpener && Me.BuffCount("Upper Hand") < 2),
+                    Spell.Cast("Blaster Whip", ret => !HoldForOpener && Core.Player.BuffCount("Upper Hand") < 2),
 
                     //Cheap filler
-                    Spell.Cast("Quick Shot", ret => !HoldForOpener && Me.EnergyPercent >= 85 && !Me.HasBuff("Upper Hand")),
+                    Spell.Cast("Quick Shot", ret => !HoldForOpener && Core.Player.EnergyPercent >= 85 && !Core.Player.HasBuff("Upper Hand")),
 
                     //Never stall
                     Spell.Cast("Flurry of Bolts", ret => !HoldForOpener)
@@ -140,10 +140,10 @@ namespace DefaultCombat.Routines
                 return new Decorator(ret => Targeting.ShouldAoe && !HoldForOpener,
                     new PrioritySelector(
                         Spell.DoT("Shrap Bomb", "Shrap Bomb"),
-                        Spell.Cast("Bushwhack", on => Me,
-                            ret => Me.HasBuff("Upper Hand")),
+                        Spell.Cast("Bushwhack", on => Core.Player,
+                            ret => Core.Player.HasBuff("Upper Hand")),
                         Spell.Cast("Lacerating Blast"),
-                        Spell.Cast("Thermal Grenade", ret => Me.EnergyPercent >= 60)
+                        Spell.Cast("Thermal Grenade", ret => Core.Player.EnergyPercent >= 60)
                         ));
             }
         }

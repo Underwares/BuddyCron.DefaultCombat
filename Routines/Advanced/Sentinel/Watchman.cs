@@ -7,9 +7,9 @@ using BuddyCron.Helpers;
 using BuddyCron.Managers;
 using BuddyCron.Navigation;
 using BuddyCron.Objects;
+using DefaultCombat.Behaviors;
 using Reborn.Utilities;
 using Reborn.Behaviors.Treesharp;
-using DefaultCombat.Core;
 using DefaultCombat.Helpers;
 
 namespace DefaultCombat.Routines
@@ -33,32 +33,32 @@ namespace DefaultCombat.Routines
             get
             {
                 return new PrioritySelector(
-                    Spell.Buff("Resolute", ret => Me.IsStunned),
+                    Spell.Buff("Resolute", ret => Core.Player.IsStunned),
 
                     //Defensives -- keep these first, they are what keeps a leveling character alive
-                    Spell.Buff("Rebuke", ret => Me.HealthPercent <= 75),
-                    Spell.Buff("Saber Ward", ret => Me.HealthPercent <= 50),
-                    Spell.Cast("Force Camouflage", ret => Me.HealthPercent <= 35),
-                    Spell.Buff("Guarded by the Force", ret => Me.HealthPercent <= 20),
-                    Spell.Buff("Unity", ret => Me.Companion != null && Me.HealthPercent <= 15),
+                    Spell.Buff("Rebuke", ret => Core.Player.HealthPercent <= 75),
+                    Spell.Buff("Saber Ward", ret => Core.Player.HealthPercent <= 50),
+                    Spell.Cast("Force Camouflage", ret => Core.Player.HealthPercent <= 35),
+                    Spell.Buff("Guarded by the Force", ret => Core.Player.HealthPercent <= 20),
+                    Spell.Buff("Unity", ret => Core.Player.Companion != null && Core.Player.HealthPercent <= 15),
 
                     //Offensive cooldowns
-                    Spell.Buff("Force Clarity", ret => Me.Target != null && Me.Target.StrongOrGreater()),
+                    Spell.Buff("Force Clarity", ret => Core.Player.Target != null && Core.Player.Target.StrongOrGreater()),
                     Spell.Buff("Inspiration", ret => CombatHotkeys.EnableRaidBuffs),
 
                     //Overload Saber is off-GCD. Force Melt below waits for two melee-applied stacks so
                     //its non-melee GCD does not delay the three-stack application sequence.
-                    Spell.Cast("Overload Saber", ret => !Me.HasBuff("Overload Saber")),
+                    Spell.Cast("Overload Saber", ret => !Core.Player.HasBuff("Overload Saber")),
 
                     //Valorous Call tops Centering back up so Zen comes around again sooner
-                    Spell.Cast("Valorous Call", ret => !Me.HasBuff("Zen") && Me.BuffCount("Centering") < 10),
+                    Spell.Cast("Valorous Call", ret => !Core.Player.HasBuff("Zen") && Core.Player.BuffCount("Centering") < 10),
 
                     //Zen makes the burns autocrit -- only worth it once the burns are actually rolling
                     Spell.Cast("Zen",
-                        ret => !Me.HasBuff("Zen") && Me.Target != null &&
-                               (Me.Target.HasDebuff("Burning (Cauterize)") ||
-                                Me.Target.HasDebuff("Burning (Overload Saber)") ||
-                                Me.Level < 30))
+                        ret => !Core.Player.HasBuff("Zen") && Core.Player.Target != null &&
+                               (Core.Player.Target.HasDebuff("Burning (Cauterize)") ||
+                                Core.Player.Target.HasDebuff("Burning (Overload Saber)") ||
+                                Core.Player.Level < 30))
                     );
             }
         }
@@ -68,38 +68,38 @@ namespace DefaultCombat.Routines
             get
             {
                 return new PrioritySelector(
-                    Spell.Cast("Force Leap", ret => CombatHotkeys.EnableCharge && Me.Target.Distance >= 1f),
+                    Spell.Cast("Force Leap", ret => CombatHotkeys.EnableCharge && Core.Player.Target.Distance >= 1f),
 
                     //Movement
                     CombatMovement.CloseDistance(Distance.Melee),
 
                     //Legacy Heroic Moment Abilities --will only be active when user initiates Heroic Moment--
-                    HeroicComposite,
+                    RotationRuntime.HeroicMoment,
 
                     //Rotation
-                    Spell.Cast("Force Kick", ret => Me.Target.IsCasting && CombatHotkeys.EnableInterrupts),
+                    Spell.Cast("Force Kick", ret => Core.Player.Target.IsCasting && CombatHotkeys.EnableInterrupts),
 
                     //Spend Zen's autocrit window on Force Melt after two Overload Saber stacks, then
                     //let the next melee hit apply the third stack.
                     Spell.Cast("Force Melt",
-                        ret => !AbilityManager.HasAbility("Overload Saber") || !Me.HasBuff("Overload Saber") ||
-                               Me.Target.DebuffCount("Burning (Overload Saber)") >= 2),
+                        ret => !AbilityManager.HasAbility("Overload Saber") || !Core.Player.HasBuff("Overload Saber") ||
+                               Core.Player.Target.DebuffCount("Burning (Overload Saber)") >= 2),
                     Spell.Cast("Merciless Slash"),
 
                     //Maintain Cauterize after the two defining discipline attacks.
                     Spell.Cast("Cauterize",
-                        ret => !Me.Target.HasMyDebuff("Burning (Cauterize)") ||
-                               Me.Target.DebuffTimeLeft("Burning (Cauterize)") <= 2),
-                    Spell.Cast("Dispatch", ret => Me.Target.HealthPercent <= 30),
+                        ret => !Core.Player.Target.HasMyDebuff("Burning (Cauterize)") ||
+                               Core.Player.Target.DebuffTimeLeft("Burning (Cauterize)") <= 2),
+                    Spell.Cast("Dispatch", ret => Core.Player.Target.HealthPercent <= 30),
 
                     //Mind Sear makes the next Twin Saber Throw hit twice as hard and resets its cooldown
-                    Spell.Cast("Twin Saber Throw", ret => Me.HasBuff("Mind Sear") && Me.Target.Distance <= 1f),
+                    Spell.Cast("Twin Saber Throw", ret => Core.Player.HasBuff("Mind Sear") && Core.Player.Target.Distance <= 1f),
 
                     //Fillers -- Blade Barrage is free, so it comes before the focus spenders
                     Spell.Cast("Blade Barrage"),
-                    Spell.Cast("Slash", ret => Me.ActionPoints >= 6),
-                    Spell.Cast("Zealous Strike", ret => Me.ActionPoints <= 8),
-                    Spell.Cast("Twin Saber Throw", ret => Me.Target.Distance <= 1f),
+                    Spell.Cast("Slash", ret => Core.Player.ActionPoints >= 6),
+                    Spell.Cast("Zealous Strike", ret => Core.Player.ActionPoints <= 8),
+                    Spell.Cast("Twin Saber Throw", ret => Core.Player.Target.Distance <= 1f),
 
                     //Never stall -- free basic attack that builds focus
                     Spell.Cast("Strike")
@@ -114,16 +114,16 @@ namespace DefaultCombat.Routines
                 return new Decorator(ret => Targeting.ShouldPbaoe,
                     new PrioritySelector(
                         //Burns first -- Force Sweep spreads them to everything around the target
-                        Spell.Cast("Cauterize", ret => !Me.Target.HasMyDebuff("Burning (Cauterize)")),
+                        Spell.Cast("Cauterize", ret => !Core.Player.Target.HasMyDebuff("Burning (Cauterize)")),
                         Spell.Cast("Force Melt",
-                            ret => !AbilityManager.HasAbility("Overload Saber") || !Me.HasBuff("Overload Saber") ||
-                                   Me.Target.DebuffCount("Burning (Overload Saber)") >= 2),
-                        Spell.Cast("Twin Saber Throw", ret => Me.Target.Distance <= 1f),
+                            ret => !AbilityManager.HasAbility("Overload Saber") || !Core.Player.HasBuff("Overload Saber") ||
+                                   Core.Player.Target.DebuffCount("Burning (Overload Saber)") >= 2),
+                        Spell.Cast("Twin Saber Throw", ret => Core.Player.Target.Distance <= 1f),
                         Spell.Cast("Force Sweep"),
                         Spell.Cast("Merciless Slash"),
-                        Spell.Cast("Cyclone Slash", ret => Me.ActionPoints >= 5),
+                        Spell.Cast("Cyclone Slash", ret => Core.Player.ActionPoints >= 5),
                         Spell.Cast("Blade Barrage"),
-                        Spell.Cast("Zealous Strike", ret => Me.ActionPoints <= 8)
+                        Spell.Cast("Zealous Strike", ret => Core.Player.ActionPoints <= 8)
                         ));
             }
         }

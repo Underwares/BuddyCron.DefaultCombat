@@ -3,7 +3,7 @@
 
 using System.Windows.Forms;
 using System.Windows.Input;
-using DefaultCombat.Core;
+using DefaultCombat.Behaviors;
 using Reborn.Utilities;
 
 namespace DefaultCombat.Helpers

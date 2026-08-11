@@ -7,11 +7,11 @@ using BuddyCron.Helpers;
 using BuddyCron.Managers;
 using BuddyCron.Navigation;
 using BuddyCron.Objects;
+using DefaultCombat.Behaviors;
 using Reborn.Utilities;
 using Reborn.Behaviors.Treesharp;
-using DefaultCombat.Core;
 using DefaultCombat.Helpers;
-using Targeting = DefaultCombat.Core.Targeting;
+using Targeting = DefaultCombat.Behaviors.Targeting;
 
 namespace DefaultCombat.Routines
 {
@@ -30,8 +30,8 @@ namespace DefaultCombat.Routines
         ///     always the (guaranteed-crit, TA-generating) stealth Backstab. If Backstab is on
         ///     cooldown we drop the hold rather than stall out of stealth.
         /// </summary>
-        private bool HoldForOpener => Me.IsStealthed && Me.Target != null &&
-                                             AbilityManager.CanCast("Backstab", Me.Target).Success;
+        private bool HoldForOpener => Core.Player.IsStealthed && Core.Player.Target != null &&
+                                             AbilityManager.CanCast("Backstab", Core.Player.Target).Success;
 
         public override Composite Buffs
         {
@@ -39,7 +39,7 @@ namespace DefaultCombat.Routines
             {
                 return new PrioritySelector(
                     Spell.Buff("Coordination"),
-					Spell.Buff("Stealth", ret => !Rest.KeepResting() && !RotationRuntime.MovementDisabled && !Me.IsMounted)
+					Spell.Buff("Stealth", ret => !Rest.KeepResting() && !RotationRuntime.MovementDisabled && !Core.Player.IsMounted)
                     );
             }
         }
@@ -49,24 +49,24 @@ namespace DefaultCombat.Routines
             get
             {
                 return new PrioritySelector(
-                    Spell.Buff("Escape", ret => Me.IsStunned),
+                    Spell.Buff("Escape", ret => Core.Player.IsStunned),
 
                     //Raid buff - costs 1 Tactical Advantage
-                    Spell.Buff("Tactical Superiority", ret => CombatHotkeys.EnableRaidBuffs && Me.HasBuff("Tactical Advantage")),
+                    Spell.Buff("Tactical Superiority", ret => CombatHotkeys.EnableRaidBuffs && Core.Player.HasBuff("Tactical Advantage")),
 
                     //Energy / Tactical Advantage economy
-                    Spell.Cast("Adrenaline Probe", ret => Me.EnergyPercent <= 45),
-                    Spell.Cast("Stim Boost", ret => Me.InCombat && Me.BuffCount("Tactical Advantage") < 2),
+                    Spell.Cast("Adrenaline Probe", ret => Core.Player.EnergyPercent <= 45),
+                    Spell.Cast("Stim Boost", ret => Core.Player.InCombat && Core.Player.BuffCount("Tactical Advantage") < 2),
 
                     //Defensives
-                    Spell.Buff("Shield Probe", ret => Me.HealthPercent <= 75),
-                    Spell.Buff("Evasion", ret => Me.HealthPercent <= 50),
+                    Spell.Buff("Shield Probe", ret => Core.Player.HealthPercent <= 75),
+                    Spell.Buff("Evasion", ret => Core.Player.HealthPercent <= 50),
 
                     //Off-heals (Operatives keep these in every spec)
-                    Spell.Cast("Kolto Infusion", on => Me, ret => Me.HealthPercent <= 40 && Me.HasBuff("Tactical Advantage")),
-                    Spell.HoT("Kolto Probe", on => Me, 60),
+                    Spell.Cast("Kolto Infusion", on => Core.Player, ret => Core.Player.HealthPercent <= 40 && Core.Player.HasBuff("Tactical Advantage")),
+                    Spell.HoT("Kolto Probe", on => Core.Player, 60),
 
-                    Spell.Buff("Unity", ret => Me.Companion != null && Me.HealthPercent <= 15)
+                    Spell.Buff("Unity", ret => Core.Player.Companion != null && Core.Player.HealthPercent <= 15)
                     );
             }
         }
@@ -76,48 +76,48 @@ namespace DefaultCombat.Routines
             get
             {
                 return new PrioritySelector(
-                    Spell.Cast("Holotraverse", ret => CombatHotkeys.EnableCharge && Me.Target.Distance > .4f),
+                    Spell.Cast("Holotraverse", ret => CombatHotkeys.EnableCharge && Core.Player.Target.Distance > .4f),
 
                     //Movement
                     CombatMovement.CloseDistance(Distance.Melee),
 
                     //Legacy Heroic Moment Abilities --will only be active when user initiates Heroic Moment--
-                    HeroicComposite,
+                    RotationRuntime.HeroicMoment,
 
                     //Interrupt
-                    Spell.Cast("Distraction", ret => Me.Target.IsCasting && CombatHotkeys.EnableInterrupts),
+                    Spell.Cast("Distraction", ret => Core.Player.Target.IsCasting && CombatHotkeys.EnableInterrupts),
 
                     //Energy floor - free filler while Adrenaline Probe is down
                     Spell.Cast("Rifle Shot",
-                        ret => Me.EnergyPercent < 45 && !AbilityManager.CanCast("Adrenaline Probe", Me).Success),
+                        ret => Core.Player.EnergyPercent < 45 && !AbilityManager.CanCast("Adrenaline Probe", Core.Player).Success),
 
                     //Guarantee the stealth Backstab opener before entering the repeatable mini-cycle.
-                    Spell.Cast("Backstab", ret => Me.IsStealthed),
+                    Spell.Cast("Backstab", ret => Core.Player.IsStealthed),
 
                     //Poison upkeep gives Volatile Substance a detonator.
                     Spell.Cast("Corrosive Dart",
                         ret => !HoldForOpener &&
-                               (!Me.Target.HasMyDebuff("Corrosive Dart") || Me.Target.DebuffTimeLeft("Corrosive Dart") <= 2)),
+                               (!Core.Player.Target.HasMyDebuff("Corrosive Dart") || Core.Player.Target.DebuffTimeLeft("Corrosive Dart") <= 2)),
 
                     //Volatile Substance arms for three seconds. Crippling Slice occupies the intervening
                     //GCD before Backstab detonates it; missing optional abilities simply fall through.
                     Spell.Cast("Volatile Substance", ret => !HoldForOpener),
                     Spell.Cast("Crippling Slice",
-                        ret => !HoldForOpener && Me.Target.HasMyDebuff("Volatile Substance")),
+                        ret => !HoldForOpener && Core.Player.Target.HasMyDebuff("Volatile Substance")),
                     Spell.Cast("Backstab",
-                        ret => !HoldForOpener && Me.Target.HasMyDebuff("Volatile Substance")),
+                        ret => !HoldForOpener && Core.Player.Target.HasMyDebuff("Volatile Substance")),
 
                     //Spend Tactical Advantage, then use Backstab normally outside the mini-cycle.
-                    Spell.Cast("Laceration", ret => !HoldForOpener && Me.HasBuff("Tactical Advantage")),
+                    Spell.Cast("Laceration", ret => !HoldForOpener && Core.Player.HasBuff("Tactical Advantage")),
                     Spell.Cast("Backstab", ret => !HoldForOpener),
 
                     //Build Tactical Advantage (Shiv is the pre-Veiled Strike low level generator)
-                    Spell.Cast("Veiled Strike", ret => !HoldForOpener && Me.BuffCount("Tactical Advantage") < 2),
-                    Spell.Cast("Shiv", ret => !HoldForOpener && Me.BuffCount("Tactical Advantage") < 2),
+                    Spell.Cast("Veiled Strike", ret => !HoldForOpener && Core.Player.BuffCount("Tactical Advantage") < 2),
+                    Spell.Cast("Shiv", ret => !HoldForOpener && Core.Player.BuffCount("Tactical Advantage") < 2),
 
                     //Cheap fillers
                     Spell.Cast("Crippling Slice", ret => !HoldForOpener),
-                    Spell.Cast("Overload Shot", ret => !HoldForOpener && Me.EnergyPercent >= 85 && !Me.HasBuff("Tactical Advantage")),
+                    Spell.Cast("Overload Shot", ret => !HoldForOpener && Core.Player.EnergyPercent >= 85 && !Core.Player.HasBuff("Tactical Advantage")),
 
                     //Never stall
                     Spell.Cast("Rifle Shot", ret => !HoldForOpener)
@@ -131,9 +131,9 @@ namespace DefaultCombat.Routines
             {
                 return new Decorator(ret => Targeting.ShouldAoe && !HoldForOpener,
                     new PrioritySelector(
-                        Spell.Cast("Toxic Haze", ret => Me.HasBuff("Tactical Advantage")),
+                        Spell.Cast("Toxic Haze", ret => Core.Player.HasBuff("Tactical Advantage")),
                         Spell.Cast("Noxious Knives"),
-                        Spell.Cast("Fragmentation Grenade", ret => Me.EnergyPercent >= 60)
+                        Spell.Cast("Fragmentation Grenade", ret => Core.Player.EnergyPercent >= 60)
                     ));
             }
         }

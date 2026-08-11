@@ -7,9 +7,9 @@ using BuddyCron.Helpers;
 using BuddyCron.Managers;
 using BuddyCron.Navigation;
 using BuddyCron.Objects;
+using DefaultCombat.Behaviors;
 using Reborn.Utilities;
 using Reborn.Behaviors.Treesharp;
-using DefaultCombat.Core;
 using DefaultCombat.Helpers;
 
 namespace DefaultCombat.Routines
@@ -32,7 +32,7 @@ namespace DefaultCombat.Routines
                     Spell.Buff("Force Valor"),
                     //Kinetic Combat should always open from Stealth: Shadow Stride out of stealth
                     //grants Shadow Wrap (free, full damage Shadow Strike) and Shadow Protection stacks.
-                    Spell.Buff("Stealth", ret => !Rest.KeepResting() && !RotationRuntime.MovementDisabled && !Me.IsMounted)
+                    Spell.Buff("Stealth", ret => !Rest.KeepResting() && !RotationRuntime.MovementDisabled && !Core.Player.IsMounted)
                     );
             }
         }
@@ -43,15 +43,15 @@ namespace DefaultCombat.Routines
             {
                 return new PrioritySelector(
                     //Kinetic Ward: keep up 100% of the time, refresh when it drops or runs low on charges
-                    Spell.Cast("Kinetic Ward", ret => Me,
-                        ret => !Me.HasBuff("Kinetic Ward") || Me.BuffCount("Kinetic Ward") <= 3),
-                    Spell.Buff("Force of Will", ret => Me.IsStunned),
-                    Spell.Buff("Battle Readiness", ret => Me.HealthPercent <= 75),
-                    Spell.Buff("Deflection", ret => Me.HealthPercent <= 60),
-                    Spell.Buff("Resilience", ret => Me.HealthPercent <= 50),
-                    Spell.Buff("Force Speed", ret => Me.HealthPercent <= 35),
-                    Spell.Buff("Force Potency", ret => Me.InCombat),
-                    Spell.Buff("Unity", ret => Me.Companion != null && Me.HealthPercent <= 15)
+                    Spell.Cast("Kinetic Ward", ret => Core.Player,
+                        ret => !Core.Player.HasBuff("Kinetic Ward") || Core.Player.BuffCount("Kinetic Ward") <= 3),
+                    Spell.Buff("Force of Will", ret => Core.Player.IsStunned),
+                    Spell.Buff("Battle Readiness", ret => Core.Player.HealthPercent <= 75),
+                    Spell.Buff("Deflection", ret => Core.Player.HealthPercent <= 60),
+                    Spell.Buff("Resilience", ret => Core.Player.HealthPercent <= 50),
+                    Spell.Buff("Force Speed", ret => Core.Player.HealthPercent <= 35),
+                    Spell.Buff("Force Potency", ret => Core.Player.InCombat),
+                    Spell.Buff("Unity", ret => Core.Player.Companion != null && Core.Player.HealthPercent <= 15)
                     );
             }
         }
@@ -63,31 +63,31 @@ namespace DefaultCombat.Routines
                 return new PrioritySelector(
                     //Gap closer. Shadow Stride also grants Shadow Wrap, so the opener naturally
                     //lands a free, full damage Shadow Strike right after the stride.
-                    Spell.Cast("Shadow Stride", ret => CombatHotkeys.EnableCharge && Me.Target.Distance >= 1f),
+                    Spell.Cast("Shadow Stride", ret => CombatHotkeys.EnableCharge && Core.Player.Target.Distance >= 1f),
 
                     //Movement
                     CombatMovement.CloseDistance(Distance.Melee),
 
                     //Interrupts
-                    Spell.Cast("Mind Snap", ret => Me.Target.IsCasting && CombatHotkeys.EnableInterrupts),
-                    Spell.Cast("Force Stun", ret => Me.Target.IsCasting && CombatHotkeys.EnableInterrupts),
+                    Spell.Cast("Mind Snap", ret => Core.Player.Target.IsCasting && CombatHotkeys.EnableInterrupts),
+                    Spell.Cast("Force Stun", ret => Core.Player.Target.IsCasting && CombatHotkeys.EnableInterrupts),
 
                     //Legacy Heroic Moment Abilities --will only be active when user initiates Heroic Moment--
-                    HeroicComposite,
+                    RotationRuntime.HeroicMoment,
 
                     //Rotation
-                    Spell.Cast("Spinning Strike", ret => Me.Target.HealthPercent <= 30 || Me.HasBuff("Stalker's Swiftness")),
+                    Spell.Cast("Spinning Strike", ret => Core.Player.Target.HealthPercent <= 30 || Core.Player.HasBuff("Stalker's Swiftness")),
                     //Cascading Debris is only worth spending at 3 Harnessed Shadows (Project and Slow Time
                     //each build a stack). Low levels have no stacks to build, so let them use it as a nuke.
-                    Spell.Cast("Cascading Debris", ret => Me.BuffCount("Harnessed Shadows") >= 3 || Me.Level < 30),
+                    Spell.Cast("Cascading Debris", ret => Core.Player.BuffCount("Harnessed Shadows") >= 3 || Core.Player.Level < 30),
                     //Project and Slow Time on cooldown - they are the Harnessed Shadows builders.
                     //Particle Acceleration resets Project for free, CanCast picks that up automatically.
                     Spell.Cast("Project"),
                     Spell.Cast("Slow Time"),
-                    Spell.Cast("Shadow Strike", ret => Me.HasBuff("Shadow Wrap")),
+                    Spell.Cast("Shadow Strike", ret => Core.Player.HasBuff("Shadow Wrap")),
                     //Combat Technique's Force Breach applies the accuracy debuff "Unsteady (Force)" (45s)
-                    Spell.Cast("Force Breach", ret => !Me.Target.HasMyDebuff("Unsteady (Force)")),
-                    Spell.Cast("Double Strike", ret => Me.ForcePercent >= 30),
+                    Spell.Cast("Force Breach", ret => !Core.Player.Target.HasMyDebuff("Unsteady (Force)")),
+                    Spell.Cast("Double Strike", ret => Core.Player.ForcePercent >= 30),
                     Spell.Cast("Saber Strike")
                     );
             }
@@ -106,7 +106,7 @@ namespace DefaultCombat.Routines
                             Spell.Cast("Force Breach"),
                             Spell.Cast("Cleaving Cut"))),
                     new Decorator(ret => Targeting.ShouldPbaoe,
-                        Spell.Cast("Whirling Blow", ret => Me.ForcePercent >= 40))
+                        Spell.Cast("Whirling Blow", ret => Core.Player.ForcePercent >= 40))
                     );
             }
         }

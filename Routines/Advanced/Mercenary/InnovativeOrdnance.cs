@@ -7,15 +7,15 @@ using BuddyCron.Helpers;
 using BuddyCron.Managers;
 using BuddyCron.Navigation;
 using BuddyCron.Objects;
+using DefaultCombat.Behaviors;
 using Reborn.Utilities;
 using Reborn.Behaviors.Treesharp;
-using DefaultCombat.Core;
 using DefaultCombat.Helpers;
 
 namespace DefaultCombat.Routines
 {
     // 7.x Innovative Ordnance Mercenary.
-    // Heat convention: Me.EnergyPercent is the REMAINING resource (100 = stone cold, 0 = fully
+    // Heat convention: Core.Player.EnergyPercent is the REMAINING resource (100 = stone cold, 0 = fully
     // overheated), so "hot" == low EnergyPercent. Rapid Shots is the free heat dump.
     /// <summary>
     ///     Mercenary Innovative Ordnance (DoT ranged dps) rotation: keeps the Incendiary Missile /
@@ -36,19 +36,19 @@ namespace DefaultCombat.Routines
             get
             {
                 return new PrioritySelector(
-                    Spell.Buff("Determination", ret => Me.IsStunned),
+                    Spell.Buff("Determination", ret => Core.Player.IsStunned),
 
                     //Defensives -- these are what keep a leveling character alive
-                    Spell.Buff("Energy Shield", ret => Me.HealthPercent <= 70),
-                    Spell.Buff("Chaff Flare", ret => Me.HealthPercent <= 50),           //ability-tree choice (~43)
-                    Spell.Buff("Kolto Overload", ret => Me.HealthPercent <= 35),
-                    Spell.Buff("Responsive Safeguards", ret => Me.HealthPercent <= 30), //ability-tree choice (~68)
-                    Spell.Buff("Unity", ret => Me.Companion != null && Me.HealthPercent <= 15),
+                    Spell.Buff("Energy Shield", ret => Core.Player.HealthPercent <= 70),
+                    Spell.Buff("Chaff Flare", ret => Core.Player.HealthPercent <= 50),           //ability-tree choice (~43)
+                    Spell.Buff("Kolto Overload", ret => Core.Player.HealthPercent <= 35),
+                    Spell.Buff("Responsive Safeguards", ret => Core.Player.HealthPercent <= 30), //ability-tree choice (~68)
+                    Spell.Buff("Unity", ret => Core.Player.Companion != null && Core.Player.HealthPercent <= 15),
 
                     //Heat / offensive cooldowns
-                    Spell.Buff("Vent Heat", ret => Me.InCombat && Me.EnergyPercent <= 40),
-                    Spell.Buff("Supercharged Gas", ret => Me.InCombat && Me.BuffCount("Supercharge") >= 10),
-                    Spell.Buff("Power Surge", ret => Me.InCombat)
+                    Spell.Buff("Vent Heat", ret => Core.Player.InCombat && Core.Player.EnergyPercent <= 40),
+                    Spell.Buff("Supercharged Gas", ret => Core.Player.InCombat && Core.Player.BuffCount("Supercharge") >= 10),
+                    Spell.Buff("Power Surge", ret => Core.Player.InCombat)
                     );
             }
         }
@@ -62,13 +62,13 @@ namespace DefaultCombat.Routines
                     CombatMovement.CloseDistance(Distance.Ranged),
 
                     //Legacy Heroic Moment Abilities --will only be active when user initiates Heroic Moment--
-                    HeroicComposite,
+                    RotationRuntime.HeroicMoment,
 
                     //Interrupt
-                    Spell.Cast("Disabling Shot", ret => Me.Target.IsCasting && CombatHotkeys.EnableInterrupts),
+                    Spell.Cast("Disabling Shot", ret => Core.Player.Target.IsCasting && CombatHotkeys.EnableInterrupts),
 
                     //Emergency heat dump -- Rapid Shots is free and lets heat bleed off
-                    Spell.Cast("Rapid Shots", ret => Me.EnergyPercent <= 25),
+                    Spell.Cast("Rapid Shots", ret => Core.Player.EnergyPercent <= 25),
 
                     //DoT upkeep (the whole point of the spec). Debuff names verified against the ability data:
                     //abl.bounty_hunter.skill.firebug.incendiary_missile      -> "Burning (Incendiary Missile)" (Debuff, 15s)
@@ -79,10 +79,10 @@ namespace DefaultCombat.Routines
                     //Rotation
                     Spell.Cast("Thermal Detonator"),                                     //ability-tree choice (~39)
                     Spell.Cast("Mag Shot"),                                              //free/reset by the Innovative Particle Accelerator proc
-                    Spell.Cast("Electro Net", ret => Me.Target.StrongOrGreater()),
+                    Spell.Cast("Electro Net", ret => Core.Player.Target.StrongOrGreater()),
                     Spell.Cast("Unload"),
-                    Spell.Cast("Power Shot", ret => Me.HasBuff("Speed to Burn")),        //free instant
-                    Spell.Cast("Power Shot", ret => Me.EnergyPercent >= 55),
+                    Spell.Cast("Power Shot", ret => Core.Player.HasBuff("Speed to Burn")),        //free instant
+                    Spell.Cast("Power Shot", ret => Core.Player.EnergyPercent >= 55),
 
                     //Never stall: free basic attack
                     Spell.Cast("Rapid Shots")
@@ -96,9 +96,9 @@ namespace DefaultCombat.Routines
             {
                 return new Decorator(ret => Targeting.ShouldAoe,
                     new PrioritySelector(
-                        Spell.Cast("Fusion Missile", ret => Me.EnergyPercent >= 50),
+                        Spell.Cast("Fusion Missile", ret => Core.Player.EnergyPercent >= 50),
                         Spell.CastOnGround("Death from Above"),
-                        Spell.CastOnGround("Sweeping Blasters", ret => Me.EnergyPercent >= 40))
+                        Spell.CastOnGround("Sweeping Blasters", ret => Core.Player.EnergyPercent >= 40))
                     );
             }
         }

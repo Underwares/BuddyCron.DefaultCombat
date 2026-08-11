@@ -2,6 +2,7 @@
 // See the file LICENSE for the source code's detailed license
 
 using System.Diagnostics;
+using BuddyCron;
 using Reborn.Behaviors.Treesharp;
 using Reborn.Utilities;
 using Action = Reborn.Behaviors.Treesharp.Action;
@@ -45,7 +46,7 @@ namespace DefaultCombat.Helpers
                     if (!_timer.IsRunning)
                         _timer.Start();
 
-                    foreach (var o in BuddyCron.Core.Player.Backpack)
+                    foreach (var o in Core.Player.Backpack)
                     {
                         if (o.Name.Contains(ItemName))
                         {

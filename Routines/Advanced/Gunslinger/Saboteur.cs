@@ -8,9 +8,9 @@ using BuddyCron.Helpers;
 using BuddyCron.Managers;
 using BuddyCron.Navigation;
 using BuddyCron.Objects;
+using DefaultCombat.Behaviors;
 using Reborn.Utilities;
 using Reborn.Behaviors.Treesharp;
-using DefaultCombat.Core;
 using DefaultCombat.Helpers;
 
 namespace DefaultCombat.Routines
@@ -37,24 +37,24 @@ namespace DefaultCombat.Routines
             {
                 return new PrioritySelector(
                     //Survival
-                    Spell.Buff("Escape", ret => Me.IsStunned),
-                    Spell.Buff("Defense Screen", ret => Me.HealthPercent <= 70),
-                    Spell.Buff("Dodge", ret => Me.HealthPercent <= 40),
-                    Spell.Buff("Hunker Down", ret => Me.IsInCover() && Me.HealthPercent <= 60),
+                    Spell.Buff("Escape", ret => Core.Player.IsStunned),
+                    Spell.Buff("Defense Screen", ret => Core.Player.HealthPercent <= 70),
+                    Spell.Buff("Dodge", ret => Core.Player.HealthPercent <= 40),
+                    Spell.Buff("Hunker Down", ret => Core.Player.IsInCover() && Core.Player.HealthPercent <= 60),
                     //Ability tree choice (lvl 68) -- silently skipped when not chosen
-                    Spell.Buff("Scrambling Field", ret => Me.HealthPercent <= 50),
+                    Spell.Buff("Scrambling Field", ret => Core.Player.HealthPercent <= 50),
                     //Resets Defense Screen/Dodge/Hunker Down/Hightail It when things go bad
-                    Spell.Buff("Bag of Tricks", ret => Me.HealthPercent <= 25),
+                    Spell.Buff("Bag of Tricks", ret => Core.Player.HealthPercent <= 25),
 
                     //Energy -- Saboteur is hungry, Cool Head at 45-50% keeps us in the top regen band
-                    Spell.Cast("Cool Head", ret => Me.EnergyPercent <= 50),
+                    Spell.Cast("Cool Head", ret => Core.Player.EnergyPercent <= 50),
 
                     //Offensive
-                    Spell.Cast("Smuggler's Luck", ret => Me.Target.StrongOrGreater()),
+                    Spell.Cast("Smuggler's Luck", ret => Core.Player.Target.StrongOrGreater()),
                     //Ability tree choice (lvl 43) -- silently skipped when not chosen
-                    Spell.Cast("Illegal Mods", ret => Me.Target.StrongOrGreater()),
+                    Spell.Cast("Illegal Mods", ret => Core.Player.Target.StrongOrGreater()),
 
-                    Spell.Buff("Unity", ret => Me.Companion != null && Me.HealthPercent <= 15)
+                    Spell.Buff("Unity", ret => Core.Player.Companion != null && Core.Player.HealthPercent <= 15)
                     );
             }
         }
@@ -70,18 +70,18 @@ namespace DefaultCombat.Routines
 
 
                     //Legacy Heroic Moment Abilities --will only be active when user initiates Heroic Moment--
-                    HeroicComposite,
+                    RotationRuntime.HeroicMoment,
 
                     //Cover -- Charged Burst/Speed Shot/Sweeping Gunfire need it and it is our energy regen
-                    Spell.Buff("Crouch", ret => !Me.IsInCover() && !Me.IsMoving),
+                    Spell.Buff("Crouch", ret => !Core.Player.IsInCover() && !Core.Player.IsMoving),
 
                     //Interrupt
-                    Spell.Cast("Distraction", ret => Me.Target.IsCasting && CombatHotkeys.EnableInterrupts),
+                    Spell.Cast("Distraction", ret => Core.Player.Target.IsCasting && CombatHotkeys.EnableInterrupts),
 
                     //Low Energy -- Seize the Moment makes Thermal Grenade free, so it is still worth firing
-                    new Decorator(ret => Me.EnergyPercent < 45,
+                    new Decorator(ret => Core.Player.EnergyPercent < 45,
                         new PrioritySelector(
-                            Spell.Cast("Thermal Grenade", ret => Me.HasBuff("Seize the Moment")),
+                            Spell.Cast("Thermal Grenade", ret => Core.Player.HasBuff("Seize the Moment")),
                             Spell.Cast("Flurry of Bolts")
                             )),
 
@@ -93,12 +93,12 @@ namespace DefaultCombat.Routines
                     Spell.DoTGround("Incendiary Grenade", 9000),
                     //Sabotage detonates our charges; do not let the Shock Charge gate lock it out
                     //on a low level character that has not trained Shock Charge yet.
-                    Spell.Cast("Sabotage", ret => Me.Target.HasMyDebuff("Shock Charge") || Me.Level < 30),
-                    Spell.Cast("Thermal Grenade", ret => Me.HasBuff("Seize the Moment")),
+                    Spell.Cast("Sabotage", ret => Core.Player.Target.HasMyDebuff("Shock Charge") || Core.Player.Level < 30),
+                    Spell.Cast("Thermal Grenade", ret => Core.Player.HasBuff("Seize the Moment")),
                     Spell.DoT("Vital Shot", "Vital Shot"),
-                    Spell.CastOnGround("Bombing Run", ret => Me.EnergyPercent > 70),
+                    Spell.CastOnGround("Bombing Run", ret => Core.Player.EnergyPercent > 70),
                     //Ability tree choice (lvl 27) for Saboteur -- skipped when not chosen
-                    Spell.Cast("Quickdraw", ret => Me.Target.HealthPercent <= 30),
+                    Spell.Cast("Quickdraw", ret => Core.Player.Target.HealthPercent <= 30),
 
                     //Filler -- keeps low level characters (most of the list above untrained) moving
                     Spell.Cast("Charged Burst"),
@@ -116,14 +116,14 @@ namespace DefaultCombat.Routines
             {
                 return new Decorator(ret => Targeting.ShouldAoe,
                     new PrioritySelector(
-                        Spell.Buff("Crouch", ret => !Me.IsInCover() && !Me.IsMoving),
+                        Spell.Buff("Crouch", ret => !Core.Player.IsInCover() && !Core.Player.IsMoving),
                         Spell.DoTGround("Incendiary Grenade", 9000),
                         //Bombing Run (7.0 rename of XS Freighter Flyby)
-                        Spell.CastOnGround("Bombing Run", ret => Me.EnergyPercent > 50),
+                        Spell.CastOnGround("Bombing Run", ret => Core.Player.EnergyPercent > 50),
                         //Sow Chaos makes Sabotage cleave off anything burning with Blazing Speed
-                        Spell.Cast("Sabotage", ret => Me.Target.HasMyDebuff("Shock Charge") || Me.Level < 30),
-                        Spell.Cast("Thermal Grenade", ret => Me.EnergyPercent > 50),
-                        Spell.CastOnGround("Sweeping Gunfire", ret => Me.IsInCover() && Me.EnergyPercent > 30)
+                        Spell.Cast("Sabotage", ret => Core.Player.Target.HasMyDebuff("Shock Charge") || Core.Player.Level < 30),
+                        Spell.Cast("Thermal Grenade", ret => Core.Player.EnergyPercent > 50),
+                        Spell.CastOnGround("Sweeping Gunfire", ret => Core.Player.IsInCover() && Core.Player.EnergyPercent > 30)
                         ));
             }
         }

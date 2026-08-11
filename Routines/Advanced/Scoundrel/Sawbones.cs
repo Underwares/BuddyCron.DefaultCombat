@@ -7,9 +7,9 @@ using BuddyCron.Helpers;
 using BuddyCron.Managers;
 using BuddyCron.Navigation;
 using BuddyCron.Objects;
+using DefaultCombat.Behaviors;
 using Reborn.Utilities;
 using Reborn.Behaviors.Treesharp;
-using DefaultCombat.Core;
 using DefaultCombat.Helpers;
 //using DefaultCombat.Extensions; ((Hold off for now))
 
@@ -34,23 +34,23 @@ namespace DefaultCombat.Routines
             get
             {
                 return new PrioritySelector(
-                    Spell.Buff("Escape", ret => Me.IsStunned),
+                    Spell.Buff("Escape", ret => Core.Player.IsStunned),
 
                     //Raid buff - costs 1 Upper Hand
-                    Spell.Buff("Stack the Deck", ret => CombatHotkeys.EnableRaidBuffs && Me.HasBuff("Upper Hand")),
+                    Spell.Buff("Stack the Deck", ret => CombatHotkeys.EnableRaidBuffs && Core.Player.HasBuff("Upper Hand")),
 
                     //Energy / Upper Hand economy
-                    Spell.Cast("Cool Head", ret => Me.EnergyPercent <= 40),
-                    Spell.Cast("Pugnacity", ret => Me.InCombat && Me.BuffCount("Upper Hand") < 2),
+                    Spell.Cast("Cool Head", ret => Core.Player.EnergyPercent <= 40),
+                    Spell.Cast("Pugnacity", ret => Core.Player.InCombat && Core.Player.BuffCount("Upper Hand") < 2),
 
                     //Ability tree choice (lvl 43) - resets Pugnacity / Kolto Cloud / Triage
                     Spell.Buff("Hot Streak",
-                        ret => Me.InCombat && HealTarget != null && HealTarget.HealthPercent <= 50),
+                        ret => Core.Player.InCombat && Targeting.HealTarget != null && Targeting.HealTarget.HealthPercent <= 50),
 
                     //Defensives
-                    Spell.Buff("Defense Screen", ret => Me.HealthPercent <= 75),
-                    Spell.Buff("Dodge", ret => Me.HealthPercent <= 50),
-                    Spell.Buff("Unity", ret => Me.Companion != null && Me.HealthPercent <= 15)
+                    Spell.Buff("Defense Screen", ret => Core.Player.HealthPercent <= 75),
+                    Spell.Buff("Dodge", ret => Core.Player.HealthPercent <= 50),
+                    Spell.Buff("Unity", ret => Core.Player.Companion != null && Core.Player.HealthPercent <= 15)
                     );
             }
         }
@@ -65,17 +65,17 @@ namespace DefaultCombat.Routines
                     CombatMovement.CloseDistance(Distance.Melee),
 
                     //Legacy Heroic Moment Abilities --will only be active when user initiates Heroic Moment--
-                    HeroicComposite,
+                    RotationRuntime.HeroicMoment,
 
                     //Interrupt
-                    Spell.Cast("Distraction", ret => Me.Target.IsCasting && CombatHotkeys.EnableInterrupts),
+                    Spell.Cast("Distraction", ret => Core.Player.Target.IsCasting && CombatHotkeys.EnableInterrupts),
 
                     //Filler damage
                     Spell.Cast("Vital Shot",
-                        ret => Me.EnergyPercent >= 60 &&
-                               (!Me.Target.HasMyDebuff("Vital Shot") || Me.Target.DebuffTimeLeft("Vital Shot") <= 2)),
-                    Spell.Cast("Blaster Whip", ret => Me.BuffCount("Upper Hand") < 2),
-                    Spell.Cast("Quick Shot", ret => Me.EnergyPercent >= 85),
+                        ret => Core.Player.EnergyPercent >= 60 &&
+                               (!Core.Player.Target.HasMyDebuff("Vital Shot") || Core.Player.Target.DebuffTimeLeft("Vital Shot") <= 2)),
+                    Spell.Cast("Blaster Whip", ret => Core.Player.BuffCount("Upper Hand") < 2),
+                    Spell.Cast("Quick Shot", ret => Core.Player.EnergyPercent >= 85),
 
                     //Never stall
                     Spell.Cast("Flurry of Bolts")
@@ -91,7 +91,7 @@ namespace DefaultCombat.Routines
                 return new PrioritySelector(
 
                     //Cleanse
-                    //Spell.Cast("Triage", ret => HealTarget.ShouldDispel()), ((New Code Hold off for now))
+                    //Spell.Cast("Triage", ret => Targeting.HealTarget.ShouldDispel()), ((New Code Hold off for now))
                     Spell.Cleanse("Triage"),
 
                     //Emergency - free below 30%
@@ -99,17 +99,17 @@ namespace DefaultCombat.Routines
 
                     //Burst triage - preserve one Upper Hand outside the emergency range.
                     Spell.Heal("Kolto Pack", 55,
-                        ret => (Me.BuffCount("Upper Hand") >= 2 || HealTarget.HealthPercent <= 35) &&
-                               Me.EnergyPercent >= 45),
+                        ret => (Core.Player.BuffCount("Upper Hand") >= 2 || Targeting.HealTarget.HealthPercent <= 35) &&
+                               Core.Player.EnergyPercent >= 45),
 
                     //Slow-release Medpac upkeep - two stacks on the tank and current triage target.
-                    Spell.Heal("Slow-release Medpac", on => Tank, 100,
-                        ret => Tank != null && Tank.InCombat &&
-                               (Tank.BuffCount("Slow-release Medpac") < 2 ||
-                                Tank.BuffTimeLeft("Slow-release Medpac") < 6)),
+                    Spell.Heal("Slow-release Medpac", on => Targeting.Tank, 100,
+                        ret => Targeting.Tank != null && Targeting.Tank.InCombat &&
+                               (Targeting.Tank.BuffCount("Slow-release Medpac") < 2 ||
+                                Targeting.Tank.BuffTimeLeft("Slow-release Medpac") < 6)),
                     Spell.Heal("Slow-release Medpac", 90,
-                        ret => HealTarget.BuffCount("Slow-release Medpac") < 2 ||
-                               HealTarget.BuffTimeLeft("Slow-release Medpac") < 6),
+                        ret => Targeting.HealTarget.BuffCount("Slow-release Medpac") < 2 ||
+                               Targeting.HealTarget.BuffTimeLeft("Slow-release Medpac") < 6),
 
                     //Smart and ground AoE healing require a real injured cluster.
                     Spell.Heal("Kolto Cloud", on => Targeting.AoeHealTarget, 90,
@@ -117,11 +117,11 @@ namespace DefaultCombat.Routines
                     Spell.HealGround("Kolto Waves"),
 
                     //Spend only surplus Upper Hand outside emergencies.
-                    Spell.Heal("Emergency Medpac", 80, ret => Me.BuffCount("Upper Hand") >= 2),
+                    Spell.Heal("Emergency Medpac", 80, ret => Core.Player.BuffCount("Upper Hand") >= 2),
 
                     //Underworld Medicine supplies Upper Hand; preserve the high-regeneration band.
                     Spell.Heal("Underworld Medicine", 75,
-                        ret => Me.EnergyPercent >= 60 || HealTarget.HealthPercent <= 40),
+                        ret => Core.Player.EnergyPercent >= 60 || Targeting.HealTarget.HealthPercent <= 40),
 
                     //Free low-level and resource-recovery filler.
                     Spell.Heal("Diagnostic Scan", 95)

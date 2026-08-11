@@ -16,8 +16,6 @@ namespace DefaultCombat.Helpers
     /// until health/resource are restored.</summary>
     public static class Rest
     {
-        private static HeroPlayer Me => BuddyCron.Core.Player;
-
         /// <summary>Composite that first revives a dead companion, then rests until health and
         /// resource are back to full.</summary>
         public static Composite HandleRest
@@ -36,12 +34,12 @@ namespace DefaultCombat.Helpers
         /// casting); false when there is nothing to revive, so the selector falls through.</summary>
         private static async Task<bool> ReviveCompanion()
         {
-            var companion = Me.Companion;
+            var companion = Core.Player.Companion;
             if (companion == null || !companion.IsDead)
                 return false;
 
             // don't clip whatever is already casting (the old Spell.WaitForCast guard)
-            if (Me.IsCasting)
+            if (Core.Player.IsCasting)
                 return true;
 
             if (companion.Distance > 0.3f)
@@ -65,18 +63,18 @@ namespace DefaultCombat.Helpers
 
             Logger.Write("Starting to rest!");
 
-            if (Me.IsMoving)
+            if (Core.Player.IsMoving)
             {
                 Navigator.PlayerMover.MoveStop();
-                await Coroutine.Wait(300, () => !Me.IsMoving);
+                await Coroutine.Wait(300, () => !Core.Player.IsMoving);
             }
 
 
-            await Coroutine.Wait(1000, () => AbilityManager.CanCast(Me.RejuvenateAbilityName(),Me).Success);
+            await Coroutine.Wait(1000, () => AbilityManager.CanCast(Core.Player.RejuvenateAbilityName(),Core.Player).Success);
 
             while (KeepResting())
             {
-                if (!Me.IsCasting && !AbilityManager.Cast(Me.RejuvenateAbilityName(), Me).Success)
+                if (!Core.Player.IsCasting && !AbilityManager.Cast(Core.Player.RejuvenateAbilityName(), Core.Player).Success)
                 {
                     // channel refused (combat, unknown ability name, ...) — bail instead of spinning
                     return false;
@@ -88,7 +86,7 @@ namespace DefaultCombat.Helpers
 
             Logger.Write("Finished Resting");
             // fully rested (or interrupted via KeepResting going false) — stop the channel
-            if (Me.IsCasting)
+            if (Core.Player.IsCasting)
                 AbilityManager.StopCasting();
 
             return true;
@@ -100,7 +98,7 @@ namespace DefaultCombat.Helpers
         {
             // ResourcePercent() returns remaining resource, 100 = full/rested — heat classes
             // count down on the current build, so no class needs inverting here.
-            switch (Me.AdvancedClass)
+            switch (Core.Player.AdvancedClass)
             {
                 case AdvancedClass.Juggernaut:
                 case AdvancedClass.Marauder:
@@ -108,7 +106,7 @@ namespace DefaultCombat.Helpers
                 case AdvancedClass.Sentinel:
                     return 100;
                 default:
-                    return (int)Me.ResourcePercent();
+                    return (int)Core.Player.ResourcePercent();
             }
         }
 
@@ -117,7 +115,7 @@ namespace DefaultCombat.Helpers
         public static bool NeedRest()
         {
             var resource = NormalizedResource();
-            return !RotationRuntime.MovementDisabled && !Me.InCombat && (resource < 50 || Me.HealthPercent < 90 || Me.Companion is { IsDead: false, HealthPercent: < 90 });
+            return !RotationRuntime.MovementDisabled && !Core.Player.InCombat && (resource < 50 || Core.Player.HealthPercent < 90 || Core.Player.Companion is { IsDead: false, HealthPercent: < 90 });
         }
 
         /// <summary>True while resting should continue: still out of combat and anything
@@ -125,7 +123,7 @@ namespace DefaultCombat.Helpers
         public static bool KeepResting()
         {
             var resource = NormalizedResource();
-            return !RotationRuntime.MovementDisabled && !Me.InCombat && (resource < 100 || Me.HealthPercent < 100 || Me.Companion is
+            return !RotationRuntime.MovementDisabled && !Core.Player.InCombat && (resource < 100 || Core.Player.HealthPercent < 100 || Core.Player.Companion is
             {
                 IsDead: false, HealthPercent: < 100
             });

@@ -7,9 +7,9 @@ using BuddyCron.Helpers;
 using BuddyCron.Managers;
 using BuddyCron.Navigation;
 using BuddyCron.Objects;
+using DefaultCombat.Behaviors;
 using Reborn.Utilities;
 using Reborn.Behaviors.Treesharp;
-using DefaultCombat.Core;
 using DefaultCombat.Helpers;
 
 namespace DefaultCombat.Routines
@@ -33,24 +33,24 @@ namespace DefaultCombat.Routines
             get
             {
                 return new PrioritySelector(
-                    Spell.Buff("Resolute", ret => Me.IsStunned),
+                    Spell.Buff("Resolute", ret => Core.Player.IsStunned),
 
                     //Defensives -- keep these first, they are what keeps a leveling character alive
-                    Spell.Buff("Rebuke", ret => Me.HealthPercent <= 75),
-                    Spell.Buff("Saber Ward", ret => Me.HealthPercent <= 50),
-                    Spell.Cast("Force Camouflage", ret => Me.HealthPercent <= 35),
-                    Spell.Buff("Guarded by the Force", ret => Me.HealthPercent <= 20),
-                    Spell.Buff("Unity", ret => Me.Companion != null && Me.HealthPercent <= 15),
+                    Spell.Buff("Rebuke", ret => Core.Player.HealthPercent <= 75),
+                    Spell.Buff("Saber Ward", ret => Core.Player.HealthPercent <= 50),
+                    Spell.Cast("Force Camouflage", ret => Core.Player.HealthPercent <= 35),
+                    Spell.Buff("Guarded by the Force", ret => Core.Player.HealthPercent <= 20),
+                    Spell.Buff("Unity", ret => Core.Player.Companion != null && Core.Player.HealthPercent <= 15),
 
                     //Offensive cooldowns
-                    Spell.Buff("Force Clarity", ret => Me.Target != null && Me.Target.StrongOrGreater()),
+                    Spell.Buff("Force Clarity", ret => Core.Player.Target != null && Core.Player.Target.StrongOrGreater()),
                     Spell.Buff("Inspiration", ret => CombatHotkeys.EnableRaidBuffs),
 
                     //Valorous Call tops Centering back up so Zen comes around again sooner
-                    Spell.Cast("Valorous Call", ret => !Me.HasBuff("Zen") && Me.BuffCount("Centering") < 10),
+                    Spell.Cast("Valorous Call", ret => !Core.Player.HasBuff("Zen") && Core.Player.BuffCount("Centering") < 10),
 
                     //Zen gives alacrity plus a third Precision charge -- just use it on cooldown
-                    Spell.Cast("Zen", ret => !Me.HasBuff("Zen"))
+                    Spell.Cast("Zen", ret => !Core.Player.HasBuff("Zen"))
                     );
             }
         }
@@ -60,44 +60,44 @@ namespace DefaultCombat.Routines
             get
             {
                 return new PrioritySelector(
-                    Spell.Cast("Force Leap", ret => CombatHotkeys.EnableCharge && Me.Target.Distance >= 1f),
+                    Spell.Cast("Force Leap", ret => CombatHotkeys.EnableCharge && Core.Player.Target.Distance >= 1f),
 
                     //Movement
                     CombatMovement.CloseDistance(Distance.Melee),
 
                     //Legacy Heroic Moment Abilities --will only be active when user initiates Heroic Moment--
-                    HeroicComposite,
+                    RotationRuntime.HeroicMoment,
 
                     //Rotation
-                    Spell.Cast("Force Kick", ret => Me.Target.IsCasting && CombatHotkeys.EnableInterrupts),
+                    Spell.Cast("Force Kick", ret => Core.Player.Target.IsCasting && CombatHotkeys.EnableInterrupts),
 
                     //Enter the burst window with enough focus and a live Blade Rush Ataru buff.
-                    Spell.Cast("Zealous Strike", ret => Me.ActionPoints <= 5),
+                    Spell.Cast("Zealous Strike", ret => Core.Player.ActionPoints <= 5),
                     Spell.Cast("Blade Rush",
-                        ret => Me.ActionPoints >= 3 &&
-                               (!Me.HasBuff("Blade Rush") || Me.BuffTimeLeft("Blade Rush") <= 2)),
+                        ret => Core.Player.ActionPoints >= 3 &&
+                               (!Core.Player.HasBuff("Blade Rush") || Core.Player.BuffTimeLeft("Blade Rush") <= 2)),
                     Spell.Cast("Precision",
-                        ret => Me.Target.Distance <= Distance.Melee &&
-                               (Me.HasBuff("Blade Rush") || Me.Level < 30)),
+                        ret => Core.Player.Target.Distance <= Distance.Melee &&
+                               (Core.Player.HasBuff("Blade Rush") || Core.Player.Level < 30)),
 
                     //Spend the window on the hardest hitters. Opportune Attack autocrits Clashing Blast,
                     //Hand of Justice makes Dispatch free and usable at any health.
-                    Spell.Cast("Clashing Blast", ret => Me.HasBuff("Opportune Attack") || Me.Level < 30),
+                    Spell.Cast("Clashing Blast", ret => Core.Player.HasBuff("Opportune Attack") || Core.Player.Level < 30),
                     Spell.Cast("Dispatch",
-                        ret => Me.HasBuff("Hand of Justice") || Me.Target.HealthPercent <= 30),
+                        ret => Core.Player.HasBuff("Hand of Justice") || Core.Player.Target.HealthPercent <= 30),
                     Spell.Cast("Lance"),
                     Spell.Cast("Clashing Blast"),
-                    Spell.Cast("Blade Storm", ret => Me.HasBuff("Precision") && Me.ActionPoints >= 6),
+                    Spell.Cast("Blade Storm", ret => Core.Player.HasBuff("Precision") && Core.Player.ActionPoints >= 6),
 
                     //Twin Saber Throw on cooldown -- free damage
-                    Spell.Cast("Twin Saber Throw", ret => Me.Target.Distance <= 1f),
+                    Spell.Cast("Twin Saber Throw", ret => Core.Player.Target.Distance <= 1f),
 
                     //Blade Barrage is free, so it is the better filler while Zen is up or focus-starved
-                    Spell.Cast("Blade Barrage", ret => Me.HasBuff("Zen") || Me.ActionPoints < 3),
+                    Spell.Cast("Blade Barrage", ret => Core.Player.HasBuff("Zen") || Core.Player.ActionPoints < 3),
 
                     //Primary filler
-                    Spell.Cast("Blade Rush", ret => Me.ActionPoints >= 3),
-                    Spell.Cast("Zealous Strike", ret => Me.ActionPoints <= 8),
+                    Spell.Cast("Blade Rush", ret => Core.Player.ActionPoints >= 3),
+                    Spell.Cast("Zealous Strike", ret => Core.Player.ActionPoints <= 8),
                     Spell.Cast("Blade Barrage"),
 
                     //Never stall -- free basic attack that builds focus
@@ -113,17 +113,17 @@ namespace DefaultCombat.Routines
                 return new Decorator(ret => Targeting.ShouldPbaoe,
                     new PrioritySelector(
                         //These out-damage Cyclone Slash at any target count, so they stay on top
-                        Spell.Cast("Twin Saber Throw", ret => Me.Target.Distance <= 1f),
-                        Spell.Cast("Precision", ret => Me.Target.Distance <= Distance.MeleeAoE),
+                        Spell.Cast("Twin Saber Throw", ret => Core.Player.Target.Distance <= 1f),
+                        Spell.Cast("Precision", ret => Core.Player.Target.Distance <= Distance.MeleeAoE),
                         Spell.Cast("Force Sweep"),
-                        Spell.Cast("Zealous Strike", ret => Me.ActionPoints <= 8),
+                        Spell.Cast("Zealous Strike", ret => Core.Player.ActionPoints <= 8),
 
                         //Cyclone Slash beats the single-target fillers from 2 targets up
-                        Spell.Cast("Cyclone Slash", ret => Me.ActionPoints >= 5),
+                        Spell.Cast("Cyclone Slash", ret => Core.Player.ActionPoints >= 5),
 
-                        Spell.Cast("Clashing Blast", ret => Me.HasBuff("Opportune Attack") || Me.Level < 30),
+                        Spell.Cast("Clashing Blast", ret => Core.Player.HasBuff("Opportune Attack") || Core.Player.Level < 30),
                         Spell.Cast("Dispatch",
-                            ret => Me.HasBuff("Hand of Justice") || Me.Target.HealthPercent <= 30),
+                            ret => Core.Player.HasBuff("Hand of Justice") || Core.Player.Target.HealthPercent <= 30),
                         Spell.Cast("Blade Barrage")
                         ));
             }

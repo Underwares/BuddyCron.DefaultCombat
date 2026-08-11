@@ -7,9 +7,9 @@ using BuddyCron.Helpers;
 using BuddyCron.Managers;
 using BuddyCron.Navigation;
 using BuddyCron.Objects;
+using DefaultCombat.Behaviors;
 using Reborn.Utilities;
 using Reborn.Behaviors.Treesharp;
-using DefaultCombat.Core;
 using DefaultCombat.Helpers;
 //using DefaultCombat.Extensions; ((Hold off for now))
 
@@ -34,12 +34,12 @@ namespace DefaultCombat.Routines
             get
             {
                 return new PrioritySelector(
-                    Spell.Buff("Force of Will", ret => Me.IsStunned),
+                    Spell.Buff("Force of Will", ret => Core.Player.IsStunned),
 
                     //Defensives
-                    Spell.Buff("Force Barrier", ret => Me.HealthPercent <= 20),
-                    Spell.Buff("Force Mend", ret => Me.HealthPercent <= 75),
-                    Spell.Buff("Force Armor", ret => Me.InCombat && !Me.HasDebuff("Force-imbalanced")),
+                    Spell.Buff("Force Barrier", ret => Core.Player.HealthPercent <= 20),
+                    Spell.Buff("Force Mend", ret => Core.Player.HealthPercent <= 75),
+                    Spell.Buff("Force Armor", ret => Core.Player.InCombat && !Core.Player.HasDebuff("Force-imbalanced")),
 
                     //Throughput cooldowns -- saved for when the group is actually taking damage
                     Spell.Buff("Force Empowerment", ret => CombatHotkeys.EnableRaidBuffs),
@@ -50,7 +50,7 @@ namespace DefaultCombat.Routines
                     //Resplendence (Healing Trance crits) makes it cheaper and stronger.
                     Spell.Cast("Vindicate", ret => NeedForce()),
 
-                    Spell.Buff("Unity", ret => Me.Companion != null && Me.HealthPercent <= 15)
+                    Spell.Buff("Unity", ret => Core.Player.Companion != null && Core.Player.HealthPercent <= 15)
                     );
             }
         }
@@ -64,14 +64,14 @@ namespace DefaultCombat.Routines
                     CombatMovement.CloseDistance(Distance.Ranged),
 
                     //Legacy Heroic Moment Abilities --will only be active when user initiates Heroic Moment--
-                    HeroicComposite,
+                    RotationRuntime.HeroicMoment,
 
                     //Interrupt
-                    Spell.Cast("Mind Snap", ret => Me.Target.IsCasting && CombatHotkeys.EnableInterrupts),
+                    Spell.Cast("Mind Snap", ret => Core.Player.Target.IsCasting && CombatHotkeys.EnableInterrupts),
 
                     //Damage -- a Seer still has to kill things while levelling/farming. Everything that
                     //costs Force is gated so the heal budget is never spent down to nothing.
-                    new Decorator(ret => Me.ForcePercent >= 50,
+                    new Decorator(ret => Core.Player.ForcePercent >= 50,
                         new PrioritySelector(
                             Spell.DoT("Weaken Mind", "Weaken Mind"),
 
@@ -81,13 +81,13 @@ namespace DefaultCombat.Routines
                             //Telekinetic Blitz is an ability-tree choice (lvl 68) -- skipped if not taken
                             Spell.Cast("Telekinetic Blitz"),
 
-                            Spell.Cast("Project", ret => Me.Target.HasMyDebuff("Crushed (Force)") || Me.Level < 30),
+                            Spell.Cast("Project", ret => Core.Player.Target.HasMyDebuff("Crushed (Force)") || Core.Player.Level < 30),
                             Spell.Cast("Telekinetic Throw"),
                             Spell.Cast("Disturbance")
                             )),
 
                     //Free filler so the rotation can never stall (and never starves the heals)
-                    Spell.Cast("Saber Strike", ret => Me.Target.Distance <= Distance.Melee)
+                    Spell.Cast("Saber Strike", ret => Core.Player.Target.Distance <= Distance.Melee)
                     );
             }
         }
@@ -99,42 +99,42 @@ namespace DefaultCombat.Routines
                 return new PrioritySelector(
 
                     //Cleanse
-                    //Spell.Cast("Restoration", ret => HealTarget.ShouldDispel()), ((New Code Hold off for now))
+                    //Spell.Cast("Restoration", ret => Targeting.HealTarget.ShouldDispel()), ((New Code Hold off for now))
                     Spell.Cleanse("Restoration"),
 
                     //Use the instant, free Altruism heal for urgent triage.
-                    Spell.Heal("Benevolence", 80, ret => Me.HasBuff("Altruism")),
+                    Spell.Heal("Benevolence", 80, ret => Core.Player.HasBuff("Altruism")),
 
                     //Prevent predictable damage, then build Conveyance with Rejuvenate.
-                    Spell.HoT("Force Armor", 90, ret => !HealTarget.HasDebuff("Force-imbalanced")),
+                    Spell.HoT("Force Armor", 90, ret => !Targeting.HealTarget.HasDebuff("Force-imbalanced")),
                     Spell.HoT("Rejuvenate", 95),
 
                     //Spend Conveyance on the efficient channel before other consumers.
-                    new Decorator(ret => Me.HasBuff("Conveyance"),
+                    new Decorator(ret => Core.Player.HasBuff("Conveyance"),
                         new PrioritySelector(
                             Spell.Heal("Healing Trance", 90),
                             Spell.Heal("Wandering Mend", 90,
-                                ret => !Me.HasBuff("Wandering Mend Charges")),
+                                ret => !Core.Player.HasBuff("Wandering Mend Charges")),
                             Spell.Heal("Deliverance", 60)
                             )),
 
                     //Healing Trance builds Resplendence; Mend is strongest when several allies are hurt.
                     Spell.Heal("Healing Trance", 85),
                     Spell.Heal("Wandering Mend", 85,
-                        ret => !Me.HasBuff("Wandering Mend Charges") &&
-                               (Targeting.ShouldAoeHeal || HealTarget.HealthPercent <= 60)),
+                        ret => !Core.Player.HasBuff("Wandering Mend Charges") &&
+                               (Targeting.ShouldAoeHeal || Targeting.HealTarget.HealthPercent <= 60)),
 
                     //Use the ground heal only for a sustained, tightly grouped raid-healing check.
                     Spell.HealGround("Salvation", ret => Targeting.AoeHealCount >= 4),
 
                     //Maintain preventative effects on the active tank after immediate triage.
-                    Spell.HoT("Force Armor", on => Tank, 100,
-                        ret => Tank != null && Tank.InCombat && !Tank.HasDebuff("Force-imbalanced")),
-                    Spell.HoT("Rejuvenate", on => Tank, 100, ret => Tank != null && Tank.InCombat),
+                    Spell.HoT("Force Armor", on => Targeting.Tank, 100,
+                        ret => Targeting.Tank != null && Targeting.Tank.InCombat && !Targeting.Tank.HasDebuff("Force-imbalanced")),
+                    Spell.HoT("Rejuvenate", on => Targeting.Tank, 100, ret => Targeting.Tank != null && Targeting.Tank.InCombat),
 
                     //Deliverance is the efficient direct filler. At the earliest levels, Benevolence
                     //must fill that role because the character has not learned Deliverance yet.
-                    Spell.Heal("Benevolence", 80, ret => Me.Level < 15),
+                    Spell.Heal("Benevolence", 80, ret => Core.Player.Level < 15),
                     Spell.Heal("Benevolence", 35),
                     Spell.Heal("Deliverance", 80)
                     );
@@ -147,11 +147,11 @@ namespace DefaultCombat.Routines
         /// </summary>
         private bool NeedForce()
         {
-            if (Me.HealthPercent < 50)
+            if (Core.Player.HealthPercent < 50)
                 return false;
-            if (Me.HasBuff("Resplendence") && Me.ForcePercent < 80)
+            if (Core.Player.HasBuff("Resplendence") && Core.Player.ForcePercent < 80)
                 return true;
-            return Me.ForcePercent < 40;
+            return Core.Player.ForcePercent < 40;
         }
     }
 }

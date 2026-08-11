@@ -7,9 +7,9 @@ using BuddyCron.Helpers;
 using BuddyCron.Managers;
 using BuddyCron.Navigation;
 using BuddyCron.Objects;
+using DefaultCombat.Behaviors;
 using Reborn.Utilities;
 using Reborn.Behaviors.Treesharp;
-using DefaultCombat.Core;
 using DefaultCombat.Helpers;
 
 namespace DefaultCombat.Routines
@@ -33,25 +33,25 @@ namespace DefaultCombat.Routines
             get
             {
                 return new PrioritySelector(
-                    Spell.Buff("Unleash", ret => Me.IsStunned),
+                    Spell.Buff("Unleash", ret => Core.Player.IsStunned),
 
                     //Defensives -- keep these first, they are what keeps a leveling character alive
-                    Spell.Buff("Cloak of Pain", ret => Me.HealthPercent <= 75),
-                    Spell.Buff("Saber Ward", ret => Me.HealthPercent <= 50),
-                    Spell.Cast("Force Camouflage", ret => Me.HealthPercent <= 35),
-                    Spell.Buff("Undying Rage", ret => Me.HealthPercent <= 20),
-                    Spell.Buff("Unity", ret => Me.Companion != null && Me.HealthPercent <= 15),
+                    Spell.Buff("Cloak of Pain", ret => Core.Player.HealthPercent <= 75),
+                    Spell.Buff("Saber Ward", ret => Core.Player.HealthPercent <= 50),
+                    Spell.Cast("Force Camouflage", ret => Core.Player.HealthPercent <= 35),
+                    Spell.Buff("Undying Rage", ret => Core.Player.HealthPercent <= 20),
+                    Spell.Buff("Unity", ret => Core.Player.Companion != null && Core.Player.HealthPercent <= 15),
 
                     //Offensive cooldowns
-                    Spell.Buff("Furious Power", ret => Me.Target.StrongOrGreater()),
+                    Spell.Buff("Furious Power", ret => Core.Player.Target.StrongOrGreater()),
                     Spell.Buff("Bloodthirst", ret => CombatHotkeys.EnableRaidBuffs),
 
                     //Frenzy tops Fury back up so Berserk comes around again sooner
-                    Spell.Cast("Frenzy", ret => !Me.HasBuff("Berserk") && Me.BuffCount("Fury") < 10),
+                    Spell.Cast("Frenzy", ret => !Core.Player.HasBuff("Berserk") && Core.Player.BuffCount("Fury") < 10),
 
                     //Berserk grants Shockwave -- feeds the next Raging Burst / Smash, so do not
                     //overwrite a Shockwave that has not been cashed in yet
-                    Spell.Cast("Berserk", ret => !Me.HasBuff("Berserk") && !Me.HasBuff("Shockwave"))
+                    Spell.Cast("Berserk", ret => !Core.Player.HasBuff("Berserk") && !Core.Player.HasBuff("Shockwave"))
                     );
             }
         }
@@ -61,39 +61,39 @@ namespace DefaultCombat.Routines
             get
             {
                 return new PrioritySelector(
-                    Spell.Cast("Force Charge", ret => CombatHotkeys.EnableCharge && Me.Target.Distance >= 1f),
+                    Spell.Cast("Force Charge", ret => CombatHotkeys.EnableCharge && Core.Player.Target.Distance >= 1f),
 
                     //Movement
                     CombatMovement.CloseDistance(Distance.Melee),
 
                     //Legacy Heroic Moment Abilities --will only be active when user initiates Heroic Moment--
-                    HeroicComposite,
+                    RotationRuntime.HeroicMoment,
 
                     //Rotation
-                    Spell.Cast("Disruption", ret => Me.Target.IsCasting && CombatHotkeys.EnableInterrupts),
+                    Spell.Cast("Disruption", ret => Core.Player.Target.IsCasting && CombatHotkeys.EnableInterrupts),
 
                     //Set the burst window up: Obliterate grants Dominate (autocrit) + Battle Cry,
                     //Force Crush / Berserk grant Shockwave (free + 15% damage)
                     Spell.Cast("Obliterate",
-                        ret => CombatHotkeys.EnableCharge && !Me.HasBuff("Dominate")),
-                    Spell.Cast("Force Crush", ret => !Me.HasBuff("Shockwave")),
+                        ret => CombatHotkeys.EnableCharge && !Core.Player.HasBuff("Dominate")),
+                    Spell.Cast("Force Crush", ret => !Core.Player.HasBuff("Shockwave")),
 
                     //Cash the procs in
-                    Spell.Cast("Raging Burst", ret => Me.HasBuff("Shockwave") || Me.HasBuff("Dominate")),
-                    Spell.Cast("Furious Strike", ret => Me.ActionPoints >= 5),
-                    Spell.Cast("Vicious Throw", ret => Me.Target.HealthPercent <= 30),
+                    Spell.Cast("Raging Burst", ret => Core.Player.HasBuff("Shockwave") || Core.Player.HasBuff("Dominate")),
+                    Spell.Cast("Furious Strike", ret => Core.Player.ActionPoints >= 5),
+                    Spell.Cast("Vicious Throw", ret => Core.Player.Target.HealthPercent <= 30),
                     Spell.Cast("Force Scream",
-                        ret => (Me.HasBuff("Battle Cry") || !AbilityManager.HasAbility("Obliterate")) &&
-                               Me.Target.Distance <= 1f),
+                        ret => (Core.Player.HasBuff("Battle Cry") || !AbilityManager.HasAbility("Obliterate")) &&
+                               Core.Player.Target.Distance <= 1f),
 
                     //Raging Burst on cooldown even without a proc
                     Spell.Cast("Raging Burst"),
 
                     //Fillers -- Ravage is free and still builds Fury
                     Spell.Cast("Ravage"),
-                    Spell.Cast("Battering Assault", ret => Me.ActionPoints <= 8),
-                    Spell.Cast("Vicious Slash", ret => Me.ActionPoints >= 6),
-                    Spell.Cast("Dual Saber Throw", ret => Me.Target.Distance <= 1f),
+                    Spell.Cast("Battering Assault", ret => Core.Player.ActionPoints <= 8),
+                    Spell.Cast("Vicious Slash", ret => Core.Player.ActionPoints >= 6),
+                    Spell.Cast("Dual Saber Throw", ret => Core.Player.Target.Distance <= 1f),
 
                     //Never stall -- free basic attack
                     Spell.Cast("Assault")
@@ -108,16 +108,16 @@ namespace DefaultCombat.Routines
                 return new Decorator(ret => Targeting.ShouldPbaoe,
                     new PrioritySelector(
                         //Smash is the AoE stand-in for Raging Burst and eats the same procs
-                        Spell.Cast("Force Crush", ret => !Me.HasBuff("Shockwave")),
+                        Spell.Cast("Force Crush", ret => !Core.Player.HasBuff("Shockwave")),
                         Spell.Cast("Smash",
-                            ret => Me.HasBuff("Shockwave") || Me.HasBuff("Dominate") ||
+                            ret => Core.Player.HasBuff("Shockwave") || Core.Player.HasBuff("Dominate") ||
                                    !AbilityManager.HasAbility("Raging Burst")),
                         Spell.Cast("Obliterate", ret => CombatHotkeys.EnableCharge),
                         Spell.Cast("Smash"),
-                        Spell.Cast("Dual Saber Throw", ret => Me.Target.Distance <= 1f),
-                        Spell.Cast("Sweeping Slash", ret => Me.ActionPoints >= 5),
+                        Spell.Cast("Dual Saber Throw", ret => Core.Player.Target.Distance <= 1f),
+                        Spell.Cast("Sweeping Slash", ret => Core.Player.ActionPoints >= 5),
                         Spell.Cast("Ravage"),
-                        Spell.Cast("Battering Assault", ret => Me.ActionPoints <= 8)
+                        Spell.Cast("Battering Assault", ret => Core.Player.ActionPoints <= 8)
                         ));
             }
         }

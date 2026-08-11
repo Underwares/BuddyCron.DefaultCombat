@@ -7,9 +7,9 @@ using BuddyCron.Helpers;
 using BuddyCron.Managers;
 using BuddyCron.Navigation;
 using BuddyCron.Objects;
+using DefaultCombat.Behaviors;
 using Reborn.Utilities;
 using Reborn.Behaviors.Treesharp;
-using DefaultCombat.Core;
 using DefaultCombat.Helpers;
 
 namespace DefaultCombat.Routines
@@ -33,21 +33,21 @@ namespace DefaultCombat.Routines
             get
             {
                 return new PrioritySelector(
-                    Spell.Buff("Resolute", ret => Me.IsStunned),
+                    Spell.Buff("Resolute", ret => Core.Player.IsStunned),
 
                     //Offensive
-                    Spell.Buff("Force Clarity", ret => Me.Target.BossOrGreater()),
+                    Spell.Buff("Force Clarity", ret => Core.Player.Target.BossOrGreater()),
 
                     //Combat Focus grants Singularity (next Focused Burst / Force Sweep is free
                     //and hits 15% harder) and refills focus. Alternated with Force Exhaustion.
-                    Spell.Cast("Combat Focus", ret => !Me.HasBuff("Singularity") || Me.ActionPoints <= 4),
+                    Spell.Cast("Combat Focus", ret => !Core.Player.HasBuff("Singularity") || Core.Player.ActionPoints <= 4),
 
                     //Defensives
-                    Spell.Buff("Saber Reflect", ret => Me.HealthPercent <= 90),
-                    Spell.Buff("Saber Ward", ret => Me.HealthPercent <= 50),
-                    Spell.Buff("Focused Defense", ret => Me.HealthPercent < 70),
-                    Spell.Buff("Enure", ret => Me.HealthPercent <= 30),
-                    Spell.Buff("Unity", ret => Me.Companion != null && Me.HealthPercent <= 15)
+                    Spell.Buff("Saber Reflect", ret => Core.Player.HealthPercent <= 90),
+                    Spell.Buff("Saber Ward", ret => Core.Player.HealthPercent <= 50),
+                    Spell.Buff("Focused Defense", ret => Core.Player.HealthPercent < 70),
+                    Spell.Buff("Enure", ret => Core.Player.HealthPercent <= 30),
+                    Spell.Buff("Unity", ret => Core.Player.Companion != null && Core.Player.HealthPercent <= 15)
                     );
             }
         }
@@ -57,26 +57,26 @@ namespace DefaultCombat.Routines
             get
             {
                 return new PrioritySelector(
-                    Spell.Cast("Force Leap", ret => CombatHotkeys.EnableCharge && Me.Target.Distance >= 1f),
-                    Spell.Cast("Saber Throw", ret => Me.Target.Distance > .4f && Me.Target.Distance <= 3f),
+                    Spell.Cast("Force Leap", ret => CombatHotkeys.EnableCharge && Core.Player.Target.Distance >= 1f),
+                    Spell.Cast("Saber Throw", ret => Core.Player.Target.Distance > .4f && Core.Player.Target.Distance <= 3f),
 
                     //Movement
                     CombatMovement.CloseDistance(Distance.Melee),
 
                     //Legacy Heroic Moment Abilities --will only be active when user initiates Heroic Moment--
-                    HeroicComposite,
+                    RotationRuntime.HeroicMoment,
 
                     //Interrupts
-                    Spell.Cast("Force Kick", ret => Me.Target.IsCasting && CombatHotkeys.EnableInterrupts),
+                    Spell.Cast("Force Kick", ret => Core.Player.Target.IsCasting && CombatHotkeys.EnableInterrupts),
 
                     //Rotation - Zealous Leap grants Felling Blow (autocrit Focused Burst / Force Sweep),
                     //Force Exhaustion / Combat Focus grant Singularity. Never spend the procs on anything else.
                     Spell.Cast("Zealous Leap"),
-                    Spell.Cast("Force Exhaustion", ret => !Me.HasBuff("Singularity")),
-                    Spell.Cast("Focused Burst", ret => Me.HasBuff("Felling Blow")),
+                    Spell.Cast("Force Exhaustion", ret => !Core.Player.HasBuff("Singularity")),
+                    Spell.Cast("Focused Burst", ret => Core.Player.HasBuff("Felling Blow")),
                     Spell.Cast("Force Sweep",
-                        ret => (Me.HasBuff("Felling Blow") || !AbilityManager.HasAbility("Focused Burst")) &&
-                               Me.Target.Distance <= 0.5f),
+                        ret => (Core.Player.HasBuff("Felling Blow") || !AbilityManager.HasAbility("Focused Burst")) &&
+                               Core.Player.Target.Distance <= 0.5f),
 
                     //Force Lash / Focused Vision windows
                     Spell.Cast("Concentrated Slice"),
@@ -85,14 +85,14 @@ namespace DefaultCombat.Routines
                     //Momentum makes the next Blade Storm hit harder after a leap
                     Spell.Cast("Blade Storm"),
                     Spell.Cast("Blade Barrage"),
-                    Spell.Cast("Dispatch", ret => Me.Target.HealthPercent <= 30),
+                    Spell.Cast("Dispatch", ret => Core.Player.Target.HealthPercent <= 30),
 
                     //Safety net: never let Focused Burst rot if the Felling Blow proc never lands
                     Spell.Cast("Focused Burst"),
 
                     //Fillers
-                    Spell.Cast("Sundering Strike", ret => Me.ActionPoints <= 5),
-                    Spell.Cast("Slash", ret => Me.ActionPoints >= 6),
+                    Spell.Cast("Sundering Strike", ret => Core.Player.ActionPoints <= 5),
+                    Spell.Cast("Slash", ret => Core.Player.ActionPoints >= 6),
                     Spell.Cast("Strike")
                     );
             }
@@ -105,13 +105,13 @@ namespace DefaultCombat.Routines
                 return new Decorator(ret => Targeting.ShouldPbaoe,
                     new PrioritySelector(
                         //Force Sweep is the AoE payoff - only spend it with the procs up
-                        Spell.Cast("Force Exhaustion", ret => !Me.HasBuff("Singularity")),
+                        Spell.Cast("Force Exhaustion", ret => !Core.Player.HasBuff("Singularity")),
                         Spell.Cast("Zealous Leap"),
-                        Spell.Cast("Force Sweep", ret => Me.Target.Distance <= 0.5f),
+                        Spell.Cast("Force Sweep", ret => Core.Player.Target.Distance <= 0.5f),
                         Spell.Cast("Blade Storm"),
                         Spell.Cast("Blade Barrage"),
-                        Spell.Cast("Cyclone Slash", ret => Me.Target.Distance <= 0.5f),
-                        Spell.Cast("Sundering Strike", ret => Me.ActionPoints <= 5)
+                        Spell.Cast("Cyclone Slash", ret => Core.Player.Target.Distance <= 0.5f),
+                        Spell.Cast("Sundering Strike", ret => Core.Player.ActionPoints <= 5)
                         ));
             }
         }

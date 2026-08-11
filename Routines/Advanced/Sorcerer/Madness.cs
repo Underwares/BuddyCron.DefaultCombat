@@ -7,9 +7,9 @@ using BuddyCron.Helpers;
 using BuddyCron.Managers;
 using BuddyCron.Navigation;
 using BuddyCron.Objects;
+using DefaultCombat.Behaviors;
 using Reborn.Utilities;
 using Reborn.Behaviors.Treesharp;
-using DefaultCombat.Core;
 using DefaultCombat.Helpers;
 
 namespace DefaultCombat.Routines
@@ -36,28 +36,28 @@ namespace DefaultCombat.Routines
             {
                 return new PrioritySelector(
                     //Break CC
-                    Spell.Buff("Unbreakable Will", ret => Me.IsStunned),
+                    Spell.Buff("Unbreakable Will", ret => Core.Player.IsStunned),
 
                     //Defensives
-                    Spell.Buff("Force Barrier", ret => Me.HealthPercent <= 15),
-                    Spell.Buff("Unnatural Preservation", ret => Me.HealthPercent <= 60),
-                    Spell.HoT("Static Barrier", on => Me, 100, ret => Me.InCombat && !Me.HasDebuff("Deionized")),
+                    Spell.Buff("Force Barrier", ret => Core.Player.HealthPercent <= 15),
+                    Spell.Buff("Unnatural Preservation", ret => Core.Player.HealthPercent <= 60),
+                    Spell.HoT("Static Barrier", on => Core.Player, 100, ret => Core.Player.InCombat && !Core.Player.HasDebuff("Deionized")),
 
                     //Force management (Consuming Darkness applies Weary without Force Surge, so only use it starved)
-                    Spell.Buff("Consuming Darkness", ret => Me.ForcePercent <= 25 && !Me.HasDebuff("Weary")),
+                    Spell.Buff("Consuming Darkness", ret => Core.Player.ForcePercent <= 25 && !Core.Player.HasDebuff("Weary")),
 
                     //Align throughput cooldowns with an established DoT window on durable targets.
                     Spell.Cast("Polarity Shift",
-                        ret => Me.Target != null && Me.Target.StrongOrGreater() &&
-                               (Me.Target.HasMyDebuff("Affliction") || !AbilityManager.HasAbility("Affliction"))),
+                        ret => Core.Player.Target != null && Core.Player.Target.StrongOrGreater() &&
+                               (Core.Player.Target.HasMyDebuff("Affliction") || !AbilityManager.HasAbility("Affliction"))),
                     Spell.Cast("Recklessness",
-                        ret => Me.Target != null && Me.Target.StrongOrGreater() &&
-                               (Me.Target.HasMyDebuff("Affliction") || !AbilityManager.HasAbility("Affliction"))),
-                    Spell.Buff("Force Speed", ret => Me.IsMoving),
+                        ret => Core.Player.Target != null && Core.Player.Target.StrongOrGreater() &&
+                               (Core.Player.Target.HasMyDebuff("Affliction") || !AbilityManager.HasAbility("Affliction"))),
+                    Spell.Buff("Force Speed", ret => Core.Player.IsMoving),
                     Spell.Buff("Unlimited Power", ret => CombatHotkeys.EnableRaidBuffs),
 
                     //Companion
-                    Spell.Buff("Unity", ret => Me.Companion != null && Me.HealthPercent <= 15)
+                    Spell.Buff("Unity", ret => Core.Player.Companion != null && Core.Player.HealthPercent <= 15)
                     );
             }
         }
@@ -73,15 +73,15 @@ namespace DefaultCombat.Routines
                     CombatMovement.CloseDistance(Distance.Ranged),
 
                     //Legacy Heroic Moment Abilities --will only be active when user initiates Heroic Moment--
-                    HeroicComposite,
+                    RotationRuntime.HeroicMoment,
 
                     //Interrupt (Electrocute is the backup interrupt, bosses are stun immune)
-                    Spell.Cast("Jolt", ret => Me.Target.IsCasting && CombatHotkeys.EnableInterrupts),
+                    Spell.Cast("Jolt", ret => Core.Player.Target.IsCasting && CombatHotkeys.EnableInterrupts),
                     Spell.Cast("Electrocute",
-                        ret => Me.Target.IsCasting && CombatHotkeys.EnableInterrupts && !Me.Target.BossOrGreater()),
+                        ret => Core.Player.Target.IsCasting && CombatHotkeys.EnableInterrupts && !Core.Player.Target.BossOrGreater()),
 
                     //Consume Wrath carried from a previous channel before refreshing setup effects.
-                    Spell.Cast("Demolish", ret => Me.BuffCount("Wrath") >= 4),
+                    Spell.Cast("Demolish", ret => Core.Player.BuffCount("Wrath") >= 4),
 
                     //DoTs first, everything else in Madness scales off them.
                     Spell.DoT("Affliction", "Affliction"),
@@ -89,14 +89,14 @@ namespace DefaultCombat.Routines
 
                     //Rotation
                     Spell.CastOnGround("Death Field"),   // applies Deathmark, spreads DoTs
-                    Spell.Cast("Demolish", ret => Me.BuffCount("Wrath") >= 4 || Me.Level < 50),
+                    Spell.Cast("Demolish", ret => Core.Player.BuffCount("Wrath") >= 4 || Core.Player.Level < 50),
                     Spell.Cast("Force Leech"),
-                    Spell.Cast("Lightning Strike", ret => Me.BuffCount("Wrath") >= 4),
-                    Spell.Cast("Shock", ret => Me.Level < 27),   // pre-Plague Master filler only
+                    Spell.Cast("Lightning Strike", ret => Core.Player.BuffCount("Wrath") >= 4),
+                    Spell.Cast("Shock", ret => Core.Player.Level < 27),   // pre-Plague Master filler only
 
                     //Filler / Wrath builder
                     Spell.Cast("Force Lightning"),
-                    Spell.Cast("Saber Strike", ret => Me.ForcePercent <= 25)
+                    Spell.Cast("Saber Strike", ret => Core.Player.ForcePercent <= 25)
                     );
             }
         }
@@ -111,7 +111,7 @@ namespace DefaultCombat.Routines
                         Spell.DoT("Affliction", "Affliction"),
                         Spell.DoT("Creeping Terror", "Creeping Terror"),
                         Spell.CastOnGround("Death Field"),
-                        Spell.Cast("Demolish", ret => Me.BuffCount("Wrath") >= 4 || Me.Level < 50),
+                        Spell.Cast("Demolish", ret => Core.Player.BuffCount("Wrath") >= 4 || Core.Player.Level < 50),
                         Spell.CastOnGround("Force Storm"),
                         Spell.Cast("Force Lightning")
                         ));

@@ -7,9 +7,9 @@ using BuddyCron.Helpers;
 using BuddyCron.Managers;
 using BuddyCron.Navigation;
 using BuddyCron.Objects;
+using DefaultCombat.Behaviors;
 using Reborn.Utilities;
 using Reborn.Behaviors.Treesharp;
-using DefaultCombat.Core;
 using DefaultCombat.Helpers;
 
 namespace DefaultCombat.Routines
@@ -31,7 +31,7 @@ namespace DefaultCombat.Routines
                 return new PrioritySelector(
                     Spell.Buff("Mark of Power"),
                     //Always re-stealth out of combat so we can open with Phantom Stride + Reaping Strike
-					Spell.Buff("Stealth", ret => !Rest.KeepResting() && !RotationRuntime.MovementDisabled && !Me.IsMounted)
+					Spell.Buff("Stealth", ret => !Rest.KeepResting() && !RotationRuntime.MovementDisabled && !Core.Player.IsMounted)
                     );
             }
         }
@@ -41,12 +41,12 @@ namespace DefaultCombat.Routines
             get
             {
                 return new PrioritySelector(
-                    Spell.Buff("Unbreakable Will", ret => Me.IsStunned),
-                    Spell.Buff("Overcharge Saber", ret => Me.InCombat),
-                    Spell.Buff("Deflection", ret => Me.HealthPercent <= 60),
-                    Spell.Buff("Force Shroud", ret => Me.HealthPercent <= 50),
-                    Spell.Buff("Recklessness", ret => Me.InCombat),
-                    Spell.Buff("Unity", ret => Me.Companion != null && Me.HealthPercent <= 15)
+                    Spell.Buff("Unbreakable Will", ret => Core.Player.IsStunned),
+                    Spell.Buff("Overcharge Saber", ret => Core.Player.InCombat),
+                    Spell.Buff("Deflection", ret => Core.Player.HealthPercent <= 60),
+                    Spell.Buff("Force Shroud", ret => Core.Player.HealthPercent <= 50),
+                    Spell.Buff("Recklessness", ret => Core.Player.InCombat),
+                    Spell.Buff("Unity", ret => Core.Player.Companion != null && Core.Player.HealthPercent <= 15)
                     );
             }
         }
@@ -57,39 +57,39 @@ namespace DefaultCombat.Routines
             {
                 return new PrioritySelector(
                     //Stealth opener / gap closer
-                    Spell.Cast("Phantom Stride", ret => CombatHotkeys.EnableCharge && Me.Target.Distance >= 1f),
-                    Spell.Cast("Force Speed", ret => CombatHotkeys.EnableCharge && Me.IsMoving && Me.Target.Distance > 1f),
+                    Spell.Cast("Phantom Stride", ret => CombatHotkeys.EnableCharge && Core.Player.Target.Distance >= 1f),
+                    Spell.Cast("Force Speed", ret => CombatHotkeys.EnableCharge && Core.Player.IsMoving && Core.Player.Target.Distance > 1f),
 
                     //Movement
                     CombatMovement.CloseDistance(Distance.Melee),
 
                     //Interrupts
-                    Spell.Cast("Jolt", ret => Me.Target.IsCasting && CombatHotkeys.EnableInterrupts),
-                    Spell.Cast("Electrocute", ret => Me.Target.IsCasting && CombatHotkeys.EnableInterrupts),
+                    Spell.Cast("Jolt", ret => Core.Player.Target.IsCasting && CombatHotkeys.EnableInterrupts),
+                    Spell.Cast("Electrocute", ret => Core.Player.Target.IsCasting && CombatHotkeys.EnableInterrupts),
 
                     //Legacy Heroic Moment Abilities --will only be active when user initiates Heroic Moment--
-                    HeroicComposite,
+                    RotationRuntime.HeroicMoment,
 
                     //Refresh Voltage before spending charges so Ball Lightning retains its bonuses.
                     Spell.Cast("Voltaic Slash",
-                        ret => Me.ForcePercent >= 25 &&
-                               (!Me.HasBuff("Voltage") || Me.BuffTimeLeft("Voltage") <= 3)),
+                        ret => Core.Player.ForcePercent >= 25 &&
+                               (!Core.Player.HasBuff("Voltage") || Core.Player.BuffTimeLeft("Voltage") <= 3)),
 
                     //Spend three Static Charges when that mechanic is active. The zero-stack CanCast
                     //fallback lets the pre-upgrade low-level version fire without guessing an unlock level.
                     Spell.Cast("Discharge",
-                        ret => Me.BuffCount("Static Charge") >= 3 ||
-                               (Me.BuffCount("Static Charge") == 0 &&
-                                AbilityManager.CanCast("Discharge", Me.Target).Success)),
-                    Spell.Cast("Assassinate", ret => Me.Target.HealthPercent <= 30 || Me.HasBuff("Reaper's Rush")),
+                        ret => Core.Player.BuffCount("Static Charge") >= 3 ||
+                               (Core.Player.BuffCount("Static Charge") == 0 &&
+                                AbilityManager.CanCast("Discharge", Core.Player.Target).Success)),
+                    Spell.Cast("Assassinate", ret => Core.Player.Target.HealthPercent <= 30 || Core.Player.HasBuff("Reaper's Rush")),
                     //Reaping Strike is only usable from stealth or inside the crit window - CanCast gates it
                     Spell.Cast("Reaping Strike"),
                     //Ball Lightning goes on cooldown regardless of Induction stacks
                     Spell.Cast("Ball Lightning"),
-                    Spell.Cast("Maul", ret => Me.HasBuff("Duplicity")),
-                    Spell.Cast("Voltaic Slash", ret => Me.ForcePercent >= 25),
+                    Spell.Cast("Maul", ret => Core.Player.HasBuff("Duplicity")),
+                    Spell.Cast("Voltaic Slash", ret => Core.Player.ForcePercent >= 25),
                     //Filler for characters that have not trained Voltaic Slash yet
-                    Spell.Cast("Thrash", ret => Me.ForcePercent >= 25),
+                    Spell.Cast("Thrash", ret => Core.Player.ForcePercent >= 25),
                     Spell.Cast("Saber Strike")
 
                     );
@@ -104,13 +104,13 @@ namespace DefaultCombat.Routines
                     new Decorator(ret => Targeting.ShouldAoe,
                         new PrioritySelector(
                             Spell.Cast("Discharge",
-                                ret => Me.BuffCount("Static Charge") >= 3 ||
-                                       (Me.BuffCount("Static Charge") == 0 &&
-                                        AbilityManager.CanCast("Discharge", Me.Target).Success)),
+                                ret => Core.Player.BuffCount("Static Charge") >= 3 ||
+                                       (Core.Player.BuffCount("Static Charge") == 0 &&
+                                        AbilityManager.CanCast("Discharge", Core.Player.Target).Success)),
 							Spell.Cast("Severing Slash"))),
                     new Decorator(ret => Targeting.ShouldPbaoe,
                         //Lacerate is the AoE filler and also builds Voltage for Ball Lightning
-                        Spell.Cast("Lacerate", ret => Me.ForcePercent >= 40))
+                        Spell.Cast("Lacerate", ret => Core.Player.ForcePercent >= 40))
                     );
             }
         }

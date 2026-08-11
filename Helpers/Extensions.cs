@@ -207,14 +207,14 @@ namespace DefaultCombat.Helpers
         /// cast by the player.</summary>
         public static bool HasMyBuff(this HeroCharacter u, string aura)
         {
-            var pNode = BuddyCron.Core.Player.NodeId;
+            var pNode = Core.Player.NodeId;
             return u.Buffs.Any(a => a.Name == aura && a.CasterGuid == pNode);
         }
         /// <summary>True when <paramref name="u"/> has a debuff named <paramref name="aura"/> that
         /// was cast by the player.</summary>
         public static bool HasMyDebuff(this HeroCharacter u, string aura)
         {
-            var pNode = BuddyCron.Core.Player.NodeId;
+            var pNode = Core.Player.NodeId;
             return u.Debuffs.Any(a => a.Name == aura && a.CasterGuid == pNode);
         }
 
@@ -223,7 +223,7 @@ namespace DefaultCombat.Helpers
         public static bool HasMyBuff(this HeroCharacter u, string aura, out HeroEffect? effect)
         {
             effect = null;
-            var pNode = BuddyCron.Core.Player.NodeId;
+            var pNode = Core.Player.NodeId;
             effect =  u.Buffs.FirstOrDefault(a => a.Name == aura && a.CasterGuid == pNode);
             return effect != null;
         }
@@ -234,7 +234,7 @@ namespace DefaultCombat.Helpers
         public static bool HasMyDebuff(this HeroCharacter u, string aura, out HeroEffect? effect)
         {
             effect = null;
-            var pNode = BuddyCron.Core.Player.NodeId;
+            var pNode = Core.Player.NodeId;
             effect = u.Debuffs.FirstOrDefault(a => a.Name == aura && a.CasterGuid == pNode);
             return effect != null;
         }
@@ -313,8 +313,7 @@ namespace DefaultCombat.Helpers
 
         /// <summary>Summoned companions of the player's party members that pass
         /// <paramref name="companionQualifier"/>.</summary>
-        public static IEnumerable<HeroCharacter> PartyCompanions(this HeroPlayer torPlayer,
-            HeroCharacterPredicateDelegate companionQualifier = null)
+        public static IEnumerable<HeroCharacter> PartyCompanions(this HeroPlayer torPlayer, HeroCharacterPredicateDelegate companionQualifier = null)
         {
             // Extension methods guarantee the 'this' argument is never null, so no need to check a contract here
 
@@ -374,13 +373,12 @@ namespace DefaultCombat.Helpers
         public static bool IsCompanionInUse(this HeroPlayer torPlayer)
         {
             // Extension methods guarantee the 'this' argument is never null, so no need to check a contract here
-            return (torPlayer.CompanionUnlocked > 0) && (torPlayer.Companion != null);
+            return (torPlayer.CompanionsUnlocked.Count > 0) && (torPlayer.Companion != null);
         }
 
         /// <summary>Players sharing the player's group that pass <paramref name="playerQualifier"/>;
         /// a solo player yields a list containing only themself.</summary>
-        public static IEnumerable<HeroPlayer> PartyPlayers(this HeroPlayer torPlayer,
-            HeroPlayerPredicateDelegate playerQualifier = null)
+        public static IEnumerable<HeroPlayer> PartyPlayers(this HeroPlayer torPlayer, HeroPlayerPredicateDelegate playerQualifier = null)
         {
             playerQualifier = playerQualifier ?? (ctx => true); // resolve playerQualifier to something sane
 
@@ -391,13 +389,12 @@ namespace DefaultCombat.Helpers
             // We don't want a list of 'solo' players (what the normal query would do), we want a list with only the solo torPlayer on it.
             if (playerGroupId == 0)
             {
-                return HeroObjectManager.GetObjectsOfType<HeroPlayer>().Where(p => (p == BuddyCron.Core.Player) && playerQualifier(p));
+                return HeroObjectManager.GetObjectsOfType<HeroPlayer>().Where(p => (p == Core.Player) && playerQualifier(p));
             }
 
             // NB: IsInParty() is implemented in terms of PartyPlayers().  Be careful not to implement this method in terms of
             // IsInParty(); otherwise, infinite recursive descent will occur.
-            return
-                HeroObjectManager.GetObjectsOfType<HeroPlayer>().Where(p => playerQualifier(p) && (p.GroupId == playerGroupId));
+            return HeroObjectManager.GetObjectsOfType<HeroPlayer>().Where(p => playerQualifier(p) && (p.GroupId == playerGroupId));
         }
 
         /// <summary>True when the character has any debuff from <see cref="DebuffNamesCrowdControl"/>.</summary>
@@ -438,7 +435,6 @@ namespace DefaultCombat.Helpers
         /// <summary>True when the player's active discipline is a healing spec.</summary>
         public static bool IsHealer(this HeroPlayer p)
         {
-            var result = false;
             switch (p.CharacterDiscipline)
             {
                 case CharacterDiscipline.CombatMedic:
@@ -447,10 +443,9 @@ namespace DefaultCombat.Helpers
                 case CharacterDiscipline.Seer:
                 case CharacterDiscipline.Sawbones:
                 case CharacterDiscipline.Corruption:
-                    result = true;
-                    break;
+                    return true;
             }
-            return result;
+            return false;
         }
 
         /// <summary>True when the character has a cover/crouch buff.</summary>
@@ -463,7 +458,7 @@ namespace DefaultCombat.Helpers
         /// the player's heading with the target's.</summary>
         public static bool IsBehind(this HeroCharacter torCharacter, HeroCharacter target)
         {
-            return Math.Abs(BuddyCron.Core.Player.Heading - target.Heading) <= 150; // && CurrentTarget.IsInRange(0.35f)
+            return Math.Abs(Core.Player!.Heading - target.Heading) <= 150; // && CurrentTarget.IsInRange(0.35f)
         }
 
         // With 7.x combat styles the origin story (CharacterClass) and the combat style

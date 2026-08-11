@@ -7,9 +7,9 @@ using BuddyCron.Helpers;
 using BuddyCron.Managers;
 using BuddyCron.Navigation;
 using BuddyCron.Objects;
+using DefaultCombat.Behaviors;
 using Reborn.Utilities;
 using Reborn.Behaviors.Treesharp;
-using DefaultCombat.Core;
 using DefaultCombat.Helpers;
 //using DefaultCombat.Extensions; ((Hold off for now))
 
@@ -36,12 +36,12 @@ namespace DefaultCombat.Routines
                 return new PrioritySelector(
 
                     //Break CC
-                    Spell.Buff("Unbreakable Will", ret => Me.IsStunned),
+                    Spell.Buff("Unbreakable Will", ret => Core.Player.IsStunned),
 
                     //Defensives
-                    Spell.Buff("Force Barrier", ret => Me.HealthPercent <= 15),
-                    Spell.Buff("Unnatural Preservation", ret => Me.HealthPercent <= 60),
-                    Spell.HoT("Static Barrier", on => Me, 100, ret => Me.InCombat && !Me.HasDebuff("Deionized")),
+                    Spell.Buff("Force Barrier", ret => Core.Player.HealthPercent <= 15),
+                    Spell.Buff("Unnatural Preservation", ret => Core.Player.HealthPercent <= 60),
+                    Spell.HoT("Static Barrier", on => Core.Player, 100, ret => Core.Player.InCombat && !Core.Player.HasDebuff("Deionized")),
 
                     //Force management: dump Force Surge stacks with Consuming Darkness (no Weary when stacked)
                     Spell.Buff("Consuming Darkness", ret => NeedForce()),
@@ -52,7 +52,7 @@ namespace DefaultCombat.Routines
                     Spell.Buff("Unlimited Power", ret => CombatHotkeys.EnableRaidBuffs),
 
                     //Companion
-                    Spell.Buff("Unity", ret => Me.Companion != null && Me.HealthPercent <= 15)
+                    Spell.Buff("Unity", ret => Core.Player.Companion != null && Core.Player.HealthPercent <= 15)
                 );
             }
         }
@@ -66,17 +66,17 @@ namespace DefaultCombat.Routines
                     CombatMovement.CloseDistance(Distance.Ranged),
 
                     //Legacy Heroic Moment Abilities --will only be active when user initiates Heroic Moment--
-                    HeroicComposite,
+                    RotationRuntime.HeroicMoment,
 
                     //Filler damage so a solo/leveling healer can actually kill things.
                     //Only runs when nothing above (heals live in AreaOfEffect) wanted the GCD.
-                    new Decorator(ret => Me.Target != null && Me.Target.IsHostile && !Me.Target.IsDead,
+                    new Decorator(ret => Core.Player.Target != null && Core.Player.Target.IsHostile && !Core.Player.Target.IsDead,
                         new PrioritySelector(
-                            Spell.Cast("Jolt", ret => Me.Target.IsCasting && CombatHotkeys.EnableInterrupts),
-                            Spell.DoT("Affliction", "Affliction", 0, ret => Me.ForcePercent >= 50),
-                            Spell.Cast("Volt Rush", ret => Me.ForcePercent >= 50),   // lvl 68 choice, skipped if untrained
-                            Spell.Cast("Shock", ret => Me.ForcePercent >= 60),
-                            Spell.Cast("Lightning Strike", ret => Me.ForcePercent >= 70),
+                            Spell.Cast("Jolt", ret => Core.Player.Target.IsCasting && CombatHotkeys.EnableInterrupts),
+                            Spell.DoT("Affliction", "Affliction", 0, ret => Core.Player.ForcePercent >= 50),
+                            Spell.Cast("Volt Rush", ret => Core.Player.ForcePercent >= 50),   // lvl 68 choice, skipped if untrained
+                            Spell.Cast("Shock", ret => Core.Player.ForcePercent >= 60),
+                            Spell.Cast("Lightning Strike", ret => Core.Player.ForcePercent >= 70),
                             Spell.Cast("Saber Strike")
                             ))
                     );
@@ -93,38 +93,38 @@ namespace DefaultCombat.Routines
                     Spell.Cleanse("Expunge"),
 
                     //Use the instant, free Dark Concentration heal for urgent triage.
-                    Spell.Heal("Dark Heal", 80, ret => Me.HasBuff("Dark Concentration")),
+                    Spell.Heal("Dark Heal", 80, ret => Core.Player.HasBuff("Dark Concentration")),
 
                     //Prevent predictable damage, then build Force Bending with Resurgence.
-                    Spell.HoT("Static Barrier", 90, ret => !HealTarget.HasDebuff("Deionized")),
+                    Spell.HoT("Static Barrier", 90, ret => !Targeting.HealTarget.HasDebuff("Deionized")),
                     Spell.HoT("Resurgence", 95),
 
                     //Spend Force Bending on the efficient channel before other consumers.
-                    new Decorator(ret => Me.HasBuff("Force Bending"),
+                    new Decorator(ret => Core.Player.HasBuff("Force Bending"),
                         new PrioritySelector(
                             Spell.Heal("Innervate", 90),
                             Spell.Heal("Roaming Mend", 90,
-                                ret => !Me.HasBuff("Roaming Mend Charges")),
+                                ret => !Core.Player.HasBuff("Roaming Mend Charges")),
                             Spell.Heal("Dark Infusion", 60)
                             )),
 
                     //Innervate builds Force Surge; Mend is strongest when several allies are hurt.
                     Spell.Heal("Innervate", 85),
                     Spell.Heal("Roaming Mend", 85,
-                        ret => !Me.HasBuff("Roaming Mend Charges") &&
-                               (Targeting.ShouldAoeHeal || HealTarget.HealthPercent <= 60)),
+                        ret => !Core.Player.HasBuff("Roaming Mend Charges") &&
+                               (Targeting.ShouldAoeHeal || Targeting.HealTarget.HealthPercent <= 60)),
 
                     //Use the ground heal only for a sustained, tightly grouped raid-healing check.
                     Spell.HealGround("Revivification", ret => Targeting.AoeHealCount >= 4),
 
                     //Maintain preventative effects on the active tank after immediate triage.
-                    Spell.HoT("Static Barrier", on => Tank, 100,
-                        ret => Tank != null && Tank.InCombat && !Tank.HasDebuff("Deionized")),
-                    Spell.HoT("Resurgence", on => Tank, 100, ret => Tank != null && Tank.InCombat),
+                    Spell.HoT("Static Barrier", on => Targeting.Tank, 100,
+                        ret => Targeting.Tank != null && Targeting.Tank.InCombat && !Targeting.Tank.HasDebuff("Deionized")),
+                    Spell.HoT("Resurgence", on => Targeting.Tank, 100, ret => Targeting.Tank != null && Targeting.Tank.InCombat),
 
                     //Dark Infusion is the efficient direct filler. At the earliest levels, Dark Heal
                     //must fill that role because the character has not learned Dark Infusion yet.
-                    Spell.Heal("Dark Heal", 80, ret => Me.Level < 15),
+                    Spell.Heal("Dark Heal", 80, ret => Core.Player.Level < 15),
                     Spell.Heal("Dark Heal", 35),
                     Spell.Heal("Dark Infusion", 80));
             }
@@ -137,11 +137,11 @@ namespace DefaultCombat.Routines
         private bool NeedForce()
         {
             //Force Surge stacks (from Innervate crits) make Consuming Darkness free of the Weary penalty.
-            if (Me.HasBuff("Force Surge") && Me.ForcePercent < 80)
+            if (Core.Player.HasBuff("Force Surge") && Core.Player.ForcePercent < 80)
                 return true;
 
             //Starved: take the Weary hit rather than stall out with no Force.
-            if (Me.ForcePercent <= 20 && !Me.HasDebuff("Weary"))
+            if (Core.Player.ForcePercent <= 20 && !Core.Player.HasDebuff("Weary"))
                 return true;
 
             return false;

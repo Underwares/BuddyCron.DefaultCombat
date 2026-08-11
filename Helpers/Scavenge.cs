@@ -11,9 +11,9 @@ using BuddyCron.Helpers;
 using BuddyCron.Managers;
 using BuddyCron.Navigation;
 using BuddyCron.Objects;
+using DefaultCombat.Behaviors;
 using Reborn.Utilities;
 using Reborn.Behaviors.Treesharp;
-using DefaultCombat.Core;
 using Action = Reborn.Behaviors.Treesharp.Action;
 
 namespace DefaultCombat.Helpers
@@ -27,8 +27,6 @@ namespace DefaultCombat.Helpers
         private static TimeSpan _pauseDuration = TimeSpan.FromSeconds(3);
         private static HeroNPC _scavengeTargetCached;
 
-        private static HeroPlayer Me => BuddyCron.Core.Player;
-
         // Harvest ranks are snapshotted once per rescan: ProfessionInfos is a GOM LookupList walk
         // (unwrap + field read per entry), and CanHarvestCorpse runs against every cached NPC.
         private static bool _ranksInitialized;
@@ -39,7 +37,7 @@ namespace DefaultCombat.Helpers
         {
             _bioanalysisRank = 0;
             _scavengingRank = 0;
-            foreach (var profession in Me.ProfessionInfos)
+            foreach (var profession in Core.Player.ProfessionInfos)
             {
                 if (profession.Type == prfProfessionType.Bioanalysis)
                     _bioanalysisRank = (ulong)profession.CurrentLevel;
@@ -118,7 +116,7 @@ namespace DefaultCombat.Helpers
         /// <paramref name="Skill"/>, or 0 when untrained.</summary>
         public static ulong PISkill(string Skill)
         {
-            foreach (var pi in BuddyCron.Core.Player.ProfessionInfos) if (pi.Name.Contains(Skill)) return (ulong)pi.CurrentLevel;
+            foreach (var pi in Core.Player.ProfessionInfos) if (pi.Name.Contains(Skill)) return (ulong)pi.CurrentLevel;
             return 0;
         }
 

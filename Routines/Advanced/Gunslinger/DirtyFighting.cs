@@ -7,9 +7,9 @@ using BuddyCron.Helpers;
 using BuddyCron.Managers;
 using BuddyCron.Navigation;
 using BuddyCron.Objects;
+using DefaultCombat.Behaviors;
 using Reborn.Utilities;
 using Reborn.Behaviors.Treesharp;
-using DefaultCombat.Core;
 using DefaultCombat.Helpers;
 
 namespace DefaultCombat.Routines
@@ -34,24 +34,24 @@ namespace DefaultCombat.Routines
             {
                 return new PrioritySelector(
                     //Survival
-                    Spell.Buff("Escape", ret => Me.IsStunned),
-                    Spell.Buff("Defense Screen", ret => Me.HealthPercent <= 70),
-                    Spell.Buff("Dodge", ret => Me.HealthPercent <= 40),
-                    Spell.Buff("Hunker Down", ret => Me.IsInCover() && Me.HealthPercent <= 60),
+                    Spell.Buff("Escape", ret => Core.Player.IsStunned),
+                    Spell.Buff("Defense Screen", ret => Core.Player.HealthPercent <= 70),
+                    Spell.Buff("Dodge", ret => Core.Player.HealthPercent <= 40),
+                    Spell.Buff("Hunker Down", ret => Core.Player.IsInCover() && Core.Player.HealthPercent <= 60),
                     //Ability tree choice (lvl 68) -- silently skipped when not chosen
-                    Spell.Buff("Scrambling Field", ret => Me.HealthPercent <= 50),
+                    Spell.Buff("Scrambling Field", ret => Core.Player.HealthPercent <= 50),
                     //Resets Defense Screen/Dodge/Hunker Down/Hightail It when things go bad
-                    Spell.Buff("Bag of Tricks", ret => Me.HealthPercent <= 25),
+                    Spell.Buff("Bag of Tricks", ret => Core.Player.HealthPercent <= 25),
 
                     //Energy -- Cool Head at 45-50% keeps us in the top regen band
-                    Spell.Cast("Cool Head", ret => Me.EnergyPercent <= 50),
+                    Spell.Cast("Cool Head", ret => Core.Player.EnergyPercent <= 50),
 
                     //Offensive
-                    Spell.Cast("Smuggler's Luck", ret => Me.Target.StrongOrGreater()),
+                    Spell.Cast("Smuggler's Luck", ret => Core.Player.Target.StrongOrGreater()),
                     //Ability tree choice (lvl 47) -- silently skipped when not chosen
-                    Spell.Cast("Illegal Mods", ret => Me.Target.StrongOrGreater()),
+                    Spell.Cast("Illegal Mods", ret => Core.Player.Target.StrongOrGreater()),
 
-                    Spell.Buff("Unity", ret => Me.Companion != null && Me.HealthPercent <= 15)
+                    Spell.Buff("Unity", ret => Core.Player.Companion != null && Core.Player.HealthPercent <= 15)
                     );
             }
         }
@@ -66,30 +66,30 @@ namespace DefaultCombat.Routines
 
 
                     //Legacy Heroic Moment Abilities --will only be active when user initiates Heroic Moment--
-                    HeroicComposite,
+                    RotationRuntime.HeroicMoment,
 
                     //Cover -- Dirty Blast/Wounding Shots/Speed Shot want it and it is our energy regen
-                    Spell.Buff("Crouch", ret => !Me.IsInCover() && !Me.IsMoving),
+                    Spell.Buff("Crouch", ret => !Core.Player.IsInCover() && !Core.Player.IsMoving),
 
                     //Interrupt
-                    Spell.Cast("Distraction", ret => Me.Target.IsCasting && CombatHotkeys.EnableInterrupts),
+                    Spell.Cast("Distraction", ret => Core.Player.Target.IsCasting && CombatHotkeys.EnableInterrupts),
 
                     //Rotation -- the dots are the whole spec, keep them at 100% uptime
                     Spell.DoT("Vital Shot", "Vital Shot"),
                     Spell.DoT("Shrap Bomb", "Shrap Bomb"),
                     //Hemorrhaging Blast makes every dot tick hit harder -- pair it with Wounding Shots
                     Spell.Cast("Hemorrhaging Blast",
-                        ret => Me.Target.HasMyDebuff("Vital Shot") || Me.Target.HasMyDebuff("Shrap Bomb")),
+                        ret => Core.Player.Target.HasMyDebuff("Vital Shot") || Core.Player.Target.HasMyDebuff("Shrap Bomb")),
                     //Wounding Shots only pays off while the dots are actually ticking. Shrap Bomb is a
                     //later pickup, so do not let its absence lock the channel out on a low level character.
                     Spell.Cast("Wounding Shots",
-                        ret => Me.Target.DebuffTimeLeft("Vital Shot") > 3
-                               && (Me.Target.DebuffTimeLeft("Shrap Bomb") > 3 || Me.Level < 40)),
-                    Spell.Cast("Quickdraw", ret => Me.Target.HealthPercent <= 30 || Me.HasBuff("Dirty Shot")),
+                        ret => Core.Player.Target.DebuffTimeLeft("Vital Shot") > 3
+                               && (Core.Player.Target.DebuffTimeLeft("Shrap Bomb") > 3 || Core.Player.Level < 40)),
+                    Spell.Cast("Quickdraw", ret => Core.Player.Target.HealthPercent <= 30 || Core.Player.HasBuff("Dirty Shot")),
 
                     //Low Energy -- Speed Shot is our cheap channel, use it before falling to Flurry of Bolts
-                    Spell.Cast("Speed Shot", ret => Me.EnergyPercent < 65),
-                    Spell.Cast("Flurry of Bolts", ret => Me.EnergyPercent < 50),
+                    Spell.Cast("Speed Shot", ret => Core.Player.EnergyPercent < 65),
+                    Spell.Cast("Flurry of Bolts", ret => Core.Player.EnergyPercent < 50),
 
                     //Filler
                     Spell.Cast("Dirty Blast"),
@@ -106,14 +106,14 @@ namespace DefaultCombat.Routines
             {
                 return new Decorator(ret => Targeting.ShouldAoe,
                     new PrioritySelector(
-                        Spell.Buff("Crouch", ret => !Me.IsInCover() && !Me.IsMoving),
+                        Spell.Buff("Crouch", ret => !Core.Player.IsInCover() && !Core.Player.IsMoving),
                         //Shrap Bomb is our AoE dot and spreads via Extra Shrapnel -- land the dots first
                         Spell.DoT("Vital Shot", "Vital Shot"),
                         Spell.DoT("Shrap Bomb", "Shrap Bomb"),
                         //Bombing Run (7.0 rename of XS Freighter Flyby) is the lvl 68 tree choice -- skipped when not chosen
-                        Spell.CastOnGround("Bombing Run", ret => Me.IsInCover() && Me.EnergyPercent > 60),
-                        Spell.Cast("Thermal Grenade", ret => Me.EnergyPercent > 50),
-                        Spell.CastOnGround("Sweeping Gunfire", ret => Me.IsInCover() && Me.EnergyPercent > 30)
+                        Spell.CastOnGround("Bombing Run", ret => Core.Player.IsInCover() && Core.Player.EnergyPercent > 60),
+                        Spell.Cast("Thermal Grenade", ret => Core.Player.EnergyPercent > 50),
+                        Spell.CastOnGround("Sweeping Gunfire", ret => Core.Player.IsInCover() && Core.Player.EnergyPercent > 30)
                         ));
             }
         }

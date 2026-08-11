@@ -7,9 +7,9 @@ using BuddyCron.Helpers;
 using BuddyCron.Managers;
 using BuddyCron.Navigation;
 using BuddyCron.Objects;
+using DefaultCombat.Behaviors;
 using Reborn.Utilities;
 using Reborn.Behaviors.Treesharp;
-using DefaultCombat.Core;
 using DefaultCombat.Helpers;
 
 namespace DefaultCombat.Routines
@@ -33,18 +33,18 @@ namespace DefaultCombat.Routines
             get
             {
                 return new PrioritySelector(
-                    Spell.Buff("Unleash", ret => Me.IsStunned),
-					Spell.Buff("Furious Power", ret => Me.Target.BossOrGreater()),
+                    Spell.Buff("Unleash", ret => Core.Player.IsStunned),
+					Spell.Buff("Furious Power", ret => Core.Player.Target.BossOrGreater()),
 
                     //Defensives, strongest last. Saber Reflect is an ability-tree choice (may be
                     //Mad Dash / Intimidating Roar instead) - it simply gets skipped if untrained.
-                    Spell.Buff("Saber Reflect", ret => Me.HealthPercent <= 80),
-                    Spell.Buff("Enraged Defense", ret => Me.HealthPercent <= 70),
-                    Spell.Buff("Invincible", ret => Me.HealthPercent <= 60),
-                    Spell.Buff("Saber Ward", ret => Me.HealthPercent <= 45),
-                    Spell.Buff("Endure Pain", ret => Me.HealthPercent <= 25),
-                    Spell.Cast("Enrage", ret => Me.ActionPoints <= 6),
-                    Spell.Buff("Unity", ret => Me.Companion != null && Me.HealthPercent <= 15)
+                    Spell.Buff("Saber Reflect", ret => Core.Player.HealthPercent <= 80),
+                    Spell.Buff("Enraged Defense", ret => Core.Player.HealthPercent <= 70),
+                    Spell.Buff("Invincible", ret => Core.Player.HealthPercent <= 60),
+                    Spell.Buff("Saber Ward", ret => Core.Player.HealthPercent <= 45),
+                    Spell.Buff("Endure Pain", ret => Core.Player.HealthPercent <= 25),
+                    Spell.Cast("Enrage", ret => Core.Player.ActionPoints <= 6),
+                    Spell.Buff("Unity", ret => Core.Player.Companion != null && Core.Player.HealthPercent <= 15)
                     );
             }
         }
@@ -54,32 +54,32 @@ namespace DefaultCombat.Routines
             get
             {
                 return new PrioritySelector(
-                    Spell.Cast("Force Charge", ret => CombatHotkeys.EnableCharge && Me.Target.Distance >= 1f),
-                    Spell.Cast("Saber Throw", ret => !RotationRuntime.MovementDisabled && Me.Target.Distance > .4f && Me.Target.Distance <= 3f),
+                    Spell.Cast("Force Charge", ret => CombatHotkeys.EnableCharge && Core.Player.Target.Distance >= 1f),
+                    Spell.Cast("Saber Throw", ret => !RotationRuntime.MovementDisabled && Core.Player.Target.Distance > .4f && Core.Player.Target.Distance <= 3f),
 
                     //Movement
                     CombatMovement.CloseDistance(Distance.Melee),
 
                     //Legacy Heroic Moment Abilities --will only be active when user initiates Heroic Moment--
-                    HeroicComposite,
+                    RotationRuntime.HeroicMoment,
 
                     //Interrupts
-                    Spell.Cast("Disruption", ret => Me.Target.IsCasting && CombatHotkeys.EnableInterrupts),
+                    Spell.Cast("Disruption", ret => Core.Player.Target.IsCasting && CombatHotkeys.EnableInterrupts),
 
                     //Rotation - Crushing Blow and Force Scream are the hard hitters (Force Scream also
                     //grants the Sonic Barrier absorb shield). Aegis Assault is the Rage builder and
                     //keeps the damage-reduction/absorb buff up, which also makes Crushing Blow cleave.
                     Spell.Cast("Crushing Blow"),
                     Spell.Cast("Force Scream"),
-                    Spell.Cast("Aegis Assault", ret => Me.ActionPoints <= 8 || !Me.HasBuff("Aegis Assault")),
+                    Spell.Cast("Aegis Assault", ret => Core.Player.ActionPoints <= 8 || !Core.Player.HasBuff("Aegis Assault")),
                     Spell.Cast("Ravage"),
-                    Spell.Cast("Backhand", ret => !Me.Target.IsStunned),
-                    Spell.Cast("Vicious Throw", ret => Me.Target.HealthPercent <= 30),
+                    Spell.Cast("Backhand", ret => !Core.Player.Target.IsStunned),
+                    Spell.Cast("Vicious Throw", ret => Core.Player.Target.HealthPercent <= 30),
                     Spell.Cast("Smash", ret => Targeting.ShouldPbaoe),
 
                     //Fillers
                     Spell.Cast("Retaliation"),
-                    Spell.Cast("Vicious Slash", ret => Me.ActionPoints >= 9),
+                    Spell.Cast("Vicious Slash", ret => Core.Player.ActionPoints >= 9),
                     Spell.Cast("Assault")
                     );
             }
@@ -94,9 +94,9 @@ namespace DefaultCombat.Routines
                         Spell.Cast("Crushing Blow"),
                         Spell.Cast("Smash"),
                         Spell.Cast("Force Scream"),
-                        Spell.Cast("Aegis Assault", ret => Me.ActionPoints <= 8 || !Me.HasBuff("Aegis Assault")),
+                        Spell.Cast("Aegis Assault", ret => Core.Player.ActionPoints <= 8 || !Core.Player.HasBuff("Aegis Assault")),
                         Spell.Cast("Retaliation"),
-                        Spell.Cast("Sweeping Slash", ret => Me.ActionPoints >= 6)
+                        Spell.Cast("Sweeping Slash", ret => Core.Player.ActionPoints >= 6)
                         ));
             }
         }

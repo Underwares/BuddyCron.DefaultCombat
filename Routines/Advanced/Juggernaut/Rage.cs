@@ -7,9 +7,9 @@ using BuddyCron.Helpers;
 using BuddyCron.Managers;
 using BuddyCron.Navigation;
 using BuddyCron.Objects;
+using DefaultCombat.Behaviors;
 using Reborn.Utilities;
 using Reborn.Behaviors.Treesharp;
-using DefaultCombat.Core;
 using DefaultCombat.Helpers;
 
 namespace DefaultCombat.Routines
@@ -33,17 +33,17 @@ namespace DefaultCombat.Routines
             get
             {
                 return new PrioritySelector(
-                    Spell.Buff("Unleash", ret => Me.IsStunned),
-					Spell.Buff("Furious Power", ret => Me.Target.BossOrGreater()),
-                    Spell.Buff("Saber Reflect", ret => Me.HealthPercent <= 90),
-                    Spell.Buff("Saber Ward", ret => Me.HealthPercent <= 70),
-                    Spell.Buff("Enraged Defense", ret => Me.HealthPercent < 70),
-                    Spell.Buff("Endure Pain", ret => Me.HealthPercent <= 30),
+                    Spell.Buff("Unleash", ret => Core.Player.IsStunned),
+					Spell.Buff("Furious Power", ret => Core.Player.Target.BossOrGreater()),
+                    Spell.Buff("Saber Reflect", ret => Core.Player.HealthPercent <= 90),
+                    Spell.Buff("Saber Ward", ret => Core.Player.HealthPercent <= 70),
+                    Spell.Buff("Enraged Defense", ret => Core.Player.HealthPercent < 70),
+                    Spell.Buff("Endure Pain", ret => Core.Player.HealthPercent <= 30),
 
                     //Enrage is an offensive cooldown for Rage: 6 Rage up front, +1/sec, and it grants
                     //Shockwave (next Smash/Raging Burst is free and hits 15% harder).
-                    Spell.Cast("Enrage", ret => !Me.HasBuff("Shockwave") || Me.ActionPoints <= 4),
-                    Spell.Buff("Unity", ret => Me.Companion != null && Me.HealthPercent <= 15)
+                    Spell.Cast("Enrage", ret => !Core.Player.HasBuff("Shockwave") || Core.Player.ActionPoints <= 4),
+                    Spell.Buff("Unity", ret => Core.Player.Companion != null && Core.Player.HealthPercent <= 15)
                     );
             }
         }
@@ -53,30 +53,30 @@ namespace DefaultCombat.Routines
             get
             {
                 return new PrioritySelector(
-                    Spell.Cast("Force Charge", ret => CombatHotkeys.EnableCharge && Me.Target.Distance >= 1f),
-                    Spell.Cast("Saber Throw", ret => !RotationRuntime.MovementDisabled && Me.Target.Distance > .4f && Me.Target.Distance <= 3f),
+                    Spell.Cast("Force Charge", ret => CombatHotkeys.EnableCharge && Core.Player.Target.Distance >= 1f),
+                    Spell.Cast("Saber Throw", ret => !RotationRuntime.MovementDisabled && Core.Player.Target.Distance > .4f && Core.Player.Target.Distance <= 3f),
 
                     //Movement
                     CombatMovement.CloseDistance(Distance.Melee),
 
                     //Legacy Heroic Moment Abilities --will only be active when user initiates Heroic Moment--
-                    HeroicComposite,
+                    RotationRuntime.HeroicMoment,
 
                     //Interrupts
-                    Spell.Cast("Disruption", ret => Me.Target.IsCasting && CombatHotkeys.EnableInterrupts),
+                    Spell.Cast("Disruption", ret => Core.Player.Target.IsCasting && CombatHotkeys.EnableInterrupts),
 
                     //Build Dominate and Shockwave before spending the Raging Burst window. If neither
                     //proc provider is learned yet, use the low-level burst without guessing a level.
-                    Spell.Cast("Obliterate", ret => !Me.HasBuff("Dominate")),
-                    Spell.Cast("Force Crush", ret => !Me.HasBuff("Shockwave")),
+                    Spell.Cast("Obliterate", ret => !Core.Player.HasBuff("Dominate")),
+                    Spell.Cast("Force Crush", ret => !Core.Player.HasBuff("Shockwave")),
                     Spell.Cast("Raging Burst",
-                        ret => Me.HasBuff("Shockwave") || Me.HasBuff("Dominate") ||
+                        ret => Core.Player.HasBuff("Shockwave") || Core.Player.HasBuff("Dominate") ||
                                (!AbilityManager.HasAbility("Obliterate") &&
                                 !AbilityManager.HasAbility("Force Crush"))),
-                    Spell.Cast("Furious Strike", ret => Me.ActionPoints >= 5 || Me.HasBuff("Fuming Rage")),
+                    Spell.Cast("Furious Strike", ret => Core.Player.ActionPoints >= 5 || Core.Player.HasBuff("Fuming Rage")),
 
                     //Execute
-                    Spell.Cast("Vicious Throw", ret => Me.Target.HealthPercent <= 30),
+                    Spell.Cast("Vicious Throw", ret => Core.Player.Target.HealthPercent <= 30),
 
                     //Smash is the low-level stand-in before Raging Burst is trained, and is still worth
                     //pressing when a pack is stacked on the target.
@@ -88,8 +88,8 @@ namespace DefaultCombat.Routines
 
                     //Fillers
                     Spell.Cast("Retaliation"),
-                    Spell.Cast("Vicious Slash", ret => Me.ActionPoints >= 9),
-                    Spell.Cast("Sundering Assault", ret => Me.ActionPoints <= 7),
+                    Spell.Cast("Vicious Slash", ret => Core.Player.ActionPoints >= 9),
+                    Spell.Cast("Sundering Assault", ret => Core.Player.ActionPoints <= 7),
                     Spell.Cast("Assault")
                     );
             }
@@ -104,8 +104,8 @@ namespace DefaultCombat.Routines
                         Spell.Cast("Smash"),
                         Spell.Cast("Obliterate"),
                         Spell.Cast("Force Crush"),
-                        Spell.Cast("Furious Strike", ret => Me.ActionPoints >= 5 || Me.HasBuff("Fuming Rage")),
-                        Spell.Cast("Sweeping Slash", ret => Me.ActionPoints >= 6),
+                        Spell.Cast("Furious Strike", ret => Core.Player.ActionPoints >= 5 || Core.Player.HasBuff("Fuming Rage")),
+                        Spell.Cast("Sweeping Slash", ret => Core.Player.ActionPoints >= 6),
                         Spell.Cast("Saber Throw")
                         ));
             }

@@ -7,9 +7,9 @@ using BuddyCron.Helpers;
 using BuddyCron.Managers;
 using BuddyCron.Navigation;
 using BuddyCron.Objects;
+using DefaultCombat.Behaviors;
 using Reborn.Utilities;
 using Reborn.Behaviors.Treesharp;
-using DefaultCombat.Core;
 using DefaultCombat.Helpers;
 
 namespace DefaultCombat.Routines
@@ -31,7 +31,7 @@ namespace DefaultCombat.Routines
                 return new PrioritySelector(
                     Spell.Buff("Mark of Power"),
                     //Re-stealth out of combat: the opener is Phantom Stride (free Raze) into the DoTs
-					Spell.Buff("Stealth", ret => !Rest.KeepResting() && !RotationRuntime.MovementDisabled && !Me.IsMounted)
+					Spell.Buff("Stealth", ret => !Rest.KeepResting() && !RotationRuntime.MovementDisabled && !Core.Player.IsMounted)
                     );
             }
         }
@@ -41,12 +41,12 @@ namespace DefaultCombat.Routines
             get
             {
                 return new PrioritySelector(
-                    Spell.Buff("Unbreakable Will", ret => Me.IsStunned),
-                    Spell.Buff("Overcharge Saber", ret => Me.HealthPercent <= 75),
-                    Spell.Buff("Deflection", ret => Me.HealthPercent <= 60),
-                    Spell.Buff("Force Shroud", ret => Me.HealthPercent <= 50),
-                    Spell.Buff("Recklessness", ret => Me.InCombat),
-                    Spell.Buff("Unity", ret => Me.Companion != null && Me.HealthPercent <= 15)
+                    Spell.Buff("Unbreakable Will", ret => Core.Player.IsStunned),
+                    Spell.Buff("Overcharge Saber", ret => Core.Player.HealthPercent <= 75),
+                    Spell.Buff("Deflection", ret => Core.Player.HealthPercent <= 60),
+                    Spell.Buff("Force Shroud", ret => Core.Player.HealthPercent <= 50),
+                    Spell.Buff("Recklessness", ret => Core.Player.InCombat),
+                    Spell.Buff("Unity", ret => Core.Player.Companion != null && Core.Player.HealthPercent <= 15)
                     );
             }
         }
@@ -57,34 +57,34 @@ namespace DefaultCombat.Routines
             {
                 return new PrioritySelector(
                     //Phantom Stride is the stealth opener and also grants Raze
-                    Spell.Cast("Phantom Stride", ret => CombatHotkeys.EnableCharge && Me.Target.Distance >= 1f),
-                    Spell.Cast("Force Speed", ret => CombatHotkeys.EnableCharge && Me.IsMoving && Me.Target.Distance > 1f),
+                    Spell.Cast("Phantom Stride", ret => CombatHotkeys.EnableCharge && Core.Player.Target.Distance >= 1f),
+                    Spell.Cast("Force Speed", ret => CombatHotkeys.EnableCharge && Core.Player.IsMoving && Core.Player.Target.Distance > 1f),
 
                     //Movement
                     CombatMovement.CloseDistance(Distance.Melee),
 
                     //Interrupts
-                    Spell.Cast("Jolt", ret => Me.Target.IsCasting && CombatHotkeys.EnableInterrupts),
-                    Spell.Cast("Electrocute", ret => Me.Target.IsCasting && CombatHotkeys.EnableInterrupts),
+                    Spell.Cast("Jolt", ret => Core.Player.Target.IsCasting && CombatHotkeys.EnableInterrupts),
+                    Spell.Cast("Electrocute", ret => Core.Player.Target.IsCasting && CombatHotkeys.EnableInterrupts),
 
                     //Legacy Heroic Moment Abilities --will only be active when user initiates Heroic Moment--
-                    HeroicComposite,
+                    RotationRuntime.HeroicMoment,
 
                     //Rotation
                     //Raze finishes Eradicate's cooldown and makes it free - always spend it
-                    Spell.Cast("Eradicate", ret => Me.HasBuff("Raze")),
+                    Spell.Cast("Eradicate", ret => Core.Player.HasBuff("Raze")),
                     //Death Field on cooldown: it applies Overwhelmed (Mental) and boosts our DoT damage
                     Spell.CastOnGround("Death Field"),
                     //Keep both 18s DoTs rolling
                     Spell.Cast("Creeping Terror",
-                        ret => !Me.Target.HasMyDebuff("Creeping Terror") || Me.Target.DebuffTimeLeft("Creeping Terror") <= 3),
+                        ret => !Core.Player.Target.HasMyDebuff("Creeping Terror") || Core.Player.Target.DebuffTimeLeft("Creeping Terror") <= 3),
                     Spell.Cast("Discharge",
-                        ret => !Me.Target.HasMyDebuff("Discharge") || Me.Target.DebuffTimeLeft("Discharge") <= 3),
-                    Spell.Cast("Assassinate", ret => Me.Target.HealthPercent <= 30 || Me.HasBuff("Reaper's Rush")),
-                    Spell.Cast("Leeching Strike", ret => Me.ForcePercent >= 30),
+                        ret => !Core.Player.Target.HasMyDebuff("Discharge") || Core.Player.Target.DebuffTimeLeft("Discharge") <= 3),
+                    Spell.Cast("Assassinate", ret => Core.Player.Target.HealthPercent <= 30 || Core.Player.HasBuff("Reaper's Rush")),
+                    Spell.Cast("Leeching Strike", ret => Core.Player.ForcePercent >= 30),
                     //Eradicate off cooldown even without a Raze proc (low levels never proc Raze)
-                    Spell.Cast("Eradicate", ret => Me.ForcePercent >= 50),
-                    Spell.Cast("Thrash", ret => Me.ForcePercent >= 45),
+                    Spell.Cast("Eradicate", ret => Core.Player.ForcePercent >= 50),
+                    Spell.Cast("Thrash", ret => Core.Player.ForcePercent >= 45),
                     Spell.Cast("Saber Strike")
 
                     );
@@ -99,12 +99,12 @@ namespace DefaultCombat.Routines
                     new Decorator(ret => Targeting.ShouldAoe,
                         new PrioritySelector(
                             Spell.CastOnGround("Death Field"),
-                            Spell.Cast("Discharge", ret => !Me.Target.HasMyDebuff("Discharge")),
-                            Spell.Cast("Creeping Terror", ret => !Me.Target.HasMyDebuff("Creeping Terror")),
+                            Spell.Cast("Discharge", ret => !Core.Player.Target.HasMyDebuff("Discharge")),
+                            Spell.Cast("Creeping Terror", ret => !Core.Player.Target.HasMyDebuff("Creeping Terror")),
 							Spell.Cast("Severing Slash"))),
                     new Decorator(ret => Targeting.ShouldPbaoe,
                         //Lacerate is the AoE filler and spreads the DoTs
-                        Spell.Cast("Lacerate", ret => Me.ForcePercent >= 40))
+                        Spell.Cast("Lacerate", ret => Core.Player.ForcePercent >= 40))
                     );
             }
         }

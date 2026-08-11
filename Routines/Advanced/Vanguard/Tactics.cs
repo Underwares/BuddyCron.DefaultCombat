@@ -7,16 +7,16 @@ using BuddyCron.Helpers;
 using BuddyCron.Managers;
 using BuddyCron.Navigation;
 using BuddyCron.Objects;
+using DefaultCombat.Behaviors;
 using Reborn.Utilities;
 using Reborn.Behaviors.Treesharp;
-using DefaultCombat.Core;
 using DefaultCombat.Helpers;
 
 namespace DefaultCombat.Routines
 {
     /// <summary>
     ///     7.x Vanguard Tactics (burst DPS) rotation, Republic mirror of Advanced Prototype.
-    ///     Cell convention: Me.EnergyPercent is the REMAINING resource (100 = full energy cells,
+    ///     Cell convention: Core.Player.EnergyPercent is the REMAINING resource (100 = full energy cells,
     ///     0 = empty), so a low value means conserve and fall back to Hammer Shot.
     /// </summary>
     public class Tactics : RotationBase
@@ -34,25 +34,25 @@ namespace DefaultCombat.Routines
             get
             {
                 return new PrioritySelector(
-                    Spell.Buff("Tenacity", ret => Me.IsStunned),
+                    Spell.Buff("Tenacity", ret => Core.Player.IsStunned),
 
                     //Interrupt lives here so a cell-starved rotation can never swallow it
-                    Spell.Cast("Riot Strike", ret => Me.Target.IsCasting && CombatHotkeys.EnableInterrupts),
+                    Spell.Cast("Riot Strike", ret => Core.Player.Target.IsCasting && CombatHotkeys.EnableInterrupts),
 
                     //Defensives
-                    Spell.Buff("Reactive Shield", ret => Me.HealthPercent <= 60),
-                    Spell.Buff("Adrenaline Rush", ret => Me.HealthPercent <= 30),
-                    Spell.Buff("Unity", ret => Me.Companion != null && Me.HealthPercent <= 15),
+                    Spell.Buff("Reactive Shield", ret => Core.Player.HealthPercent <= 60),
+                    Spell.Buff("Adrenaline Rush", ret => Core.Player.HealthPercent <= 30),
+                    Spell.Buff("Unity", ret => Core.Player.Companion != null && Core.Player.HealthPercent <= 15),
 
                     //Cells: 7.0 folded Reserve Powercell into Recharge Cells
-                    Spell.Cast("Recharge Cells", ret => Me.EnergyPercent <= 40),
+                    Spell.Cast("Recharge Cells", ret => Core.Player.EnergyPercent <= 40),
 
                     //(Power Yield is a Powertech/Advanced Prototype ability -- no Vanguard discipline
                     // grants it. Tactics' "special"-slot pick is Balmorran Advanced Weaponry.)
 
                     //Offensive cooldowns
-                    Spell.Cast("Battle Focus", ret => Me.InCombat && Me.Target.StrongOrGreater()),
-                    Spell.Cast("Shoulder Cannon", ret => Me.InCombat && !Me.HasBuff("Shoulder Cannon"))
+                    Spell.Cast("Battle Focus", ret => Core.Player.InCombat && Core.Player.Target.StrongOrGreater()),
+                    Spell.Cast("Shoulder Cannon", ret => Core.Player.InCombat && !Core.Player.HasBuff("Shoulder Cannon"))
                     );
             }
         }
@@ -62,18 +62,18 @@ namespace DefaultCombat.Routines
             get
             {
                 return new PrioritySelector(
-                    Spell.Cast("Storm", ret => CombatHotkeys.EnableCharge && Me.Target.Distance >= 1f),
+                    Spell.Cast("Storm", ret => CombatHotkeys.EnableCharge && Core.Player.Target.Distance >= 1f),
 
                     //Movement
                     CombatMovement.CloseDistance(Distance.Melee),
 
                     //Legacy Heroic Moment Abilities --will only be active when user initiates Heroic Moment--
-                    HeroicComposite,
+                    RotationRuntime.HeroicMoment,
 
                     //Low cells -- High Impact Bolt is free off Tactical Accelerator
-                    new Decorator(ret => Me.EnergyPercent <= 40,
+                    new Decorator(ret => Core.Player.EnergyPercent <= 40,
                         new PrioritySelector(
-                            Spell.Cast("High Impact Bolt", ret => Me.HasBuff("Tactical Accelerator")),
+                            Spell.Cast("High Impact Bolt", ret => Core.Player.HasBuff("Tactical Accelerator")),
                             Spell.Cast("Hammer Shot")
                             )),
 
@@ -84,14 +84,14 @@ namespace DefaultCombat.Routines
                     //"Bleeding (Retractable Blade)" -- the two are NOT named symmetrically). Gut has no
                     //cooldown, so a wrong name here re-casts it every GCD.
                     Spell.DoT("Gut", "Bleeding"),
-                    Spell.Cast("High Impact Bolt", ret => Me.HasBuff("Tactical Accelerator")),
-                    Spell.Cast("Cell Burst", ret => Me.BuffCount("Energy Lode") >= 4),
+                    Spell.Cast("High Impact Bolt", ret => Core.Player.HasBuff("Tactical Accelerator")),
+                    Spell.Cast("Cell Burst", ret => Core.Player.BuffCount("Energy Lode") >= 4),
                     Spell.Cast("High Impact Bolt"),
                     Spell.Cast("Stockstrike"),
-                    Spell.Cast("Shoulder Cannon", ret => Me.HasBuff("Shoulder Cannon") && Me.Target.StrongOrGreater()),
+                    Spell.Cast("Shoulder Cannon", ret => Core.Player.HasBuff("Shoulder Cannon") && Core.Player.Target.StrongOrGreater()),
 
                     //Fillers
-                    Spell.Cast("Tactical Surge", ret => Me.EnergyPercent >= 55),
+                    Spell.Cast("Tactical Surge", ret => Core.Player.EnergyPercent >= 55),
                     Spell.Cast("Hammer Shot")
                     );
             }
@@ -110,8 +110,8 @@ namespace DefaultCombat.Routines
                         new PrioritySelector(
                             //Flak Shell spreads the Gut bleed to everything it hits
                             Spell.Cast("Flak Shell"),
-                            Spell.Cast("Cell Burst", ret => Me.BuffCount("Energy Lode") >= 4),
-                            Spell.Cast("Explosive Surge", ret => Me.EnergyPercent >= 50)
+                            Spell.Cast("Cell Burst", ret => Core.Player.BuffCount("Energy Lode") >= 4),
+                            Spell.Cast("Explosive Surge", ret => Core.Player.EnergyPercent >= 50)
                         )));
             }
         }

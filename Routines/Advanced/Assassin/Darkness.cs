@@ -7,9 +7,9 @@ using BuddyCron.Helpers;
 using BuddyCron.Managers;
 using BuddyCron.Navigation;
 using BuddyCron.Objects;
+using DefaultCombat.Behaviors;
 using Reborn.Utilities;
 using Reborn.Behaviors.Treesharp;
-using DefaultCombat.Core;
 using DefaultCombat.Helpers;
 
 namespace DefaultCombat.Routines
@@ -32,7 +32,7 @@ namespace DefaultCombat.Routines
                     Spell.Buff("Mark of Power"),
                     //Darkness should always open from Stealth: leaving stealth instantly grants
                     //4 stacks of Dark Protection (Conspirator's Cloak passive).
-                    Spell.Buff("Stealth", ret => !Rest.KeepResting() && !RotationRuntime.MovementDisabled && !Me.IsMounted)
+                    Spell.Buff("Stealth", ret => !Rest.KeepResting() && !RotationRuntime.MovementDisabled && !Core.Player.IsMounted)
                     );
             }
         }
@@ -43,15 +43,15 @@ namespace DefaultCombat.Routines
             {
                 return new PrioritySelector(
                     //Dark Ward: keep up 100% of the time, refresh when it drops or runs low on charges
-                    Spell.Cast("Dark Ward", ret => Me,
-                        ret => !Me.HasBuff("Dark Ward") || Me.BuffCount("Dark Ward") <= 3),
-                    Spell.Buff("Unbreakable Will", ret => Me.IsStunned),
-                    Spell.Buff("Overcharge Saber", ret => Me.HealthPercent <= 75),
-                    Spell.Buff("Deflection", ret => Me.HealthPercent <= 60),
-                    Spell.Buff("Force Shroud", ret => Me.HealthPercent <= 50),
-                    Spell.Buff("Force Speed", ret => Me.HealthPercent <= 35),
-                    Spell.Buff("Recklessness", ret => Me.InCombat),
-                    Spell.Buff("Unity", ret => Me.Companion != null && Me.HealthPercent <= 15)
+                    Spell.Cast("Dark Ward", ret => Core.Player,
+                        ret => !Core.Player.HasBuff("Dark Ward") || Core.Player.BuffCount("Dark Ward") <= 3),
+                    Spell.Buff("Unbreakable Will", ret => Core.Player.IsStunned),
+                    Spell.Buff("Overcharge Saber", ret => Core.Player.HealthPercent <= 75),
+                    Spell.Buff("Deflection", ret => Core.Player.HealthPercent <= 60),
+                    Spell.Buff("Force Shroud", ret => Core.Player.HealthPercent <= 50),
+                    Spell.Buff("Force Speed", ret => Core.Player.HealthPercent <= 35),
+                    Spell.Buff("Recklessness", ret => Core.Player.InCombat),
+                    Spell.Buff("Unity", ret => Core.Player.Companion != null && Core.Player.HealthPercent <= 15)
                     );
             }
         }
@@ -63,27 +63,27 @@ namespace DefaultCombat.Routines
                 return new PrioritySelector(
                     //Gap closer. Phantom Stride also grants Conspirator's Cloak, so the opener
                     //naturally lands a free, full damage Maul right after the stride.
-                    Spell.Cast("Phantom Stride", ret => CombatHotkeys.EnableCharge && Me.Target.Distance >= 1f),
+                    Spell.Cast("Phantom Stride", ret => CombatHotkeys.EnableCharge && Core.Player.Target.Distance >= 1f),
 
                     //Movement
                     CombatMovement.CloseDistance(Distance.Melee),
 
                     //Interrupts
-                    Spell.Cast("Jolt", ret => Me.Target.IsCasting && CombatHotkeys.EnableInterrupts),
-                    Spell.Cast("Electrocute", ret => Me.Target.IsCasting && CombatHotkeys.EnableInterrupts),
+                    Spell.Cast("Jolt", ret => Core.Player.Target.IsCasting && CombatHotkeys.EnableInterrupts),
+                    Spell.Cast("Electrocute", ret => Core.Player.Target.IsCasting && CombatHotkeys.EnableInterrupts),
 
                     //Legacy Heroic Moment Abilities --will only be active when user initiates Heroic Moment--
-                    HeroicComposite,
+                    RotationRuntime.HeroicMoment,
 
                     //Rotation
-                    Spell.Cast("Assassinate", ret => Me.Target.HealthPercent <= 30 || Me.HasBuff("Reaper's Rush")),
-                    Spell.Cast("Depredating Volts", ret => Me.BuffCount("Harnessed Darkness") >= 3),
+                    Spell.Cast("Assassinate", ret => Core.Player.Target.HealthPercent <= 30 || Core.Player.HasBuff("Reaper's Rush")),
+                    Spell.Cast("Depredating Volts", ret => Core.Player.BuffCount("Harnessed Darkness") >= 3),
                     Spell.Cast("Shock"),
                     Spell.Cast("Wither"),
-                    Spell.Cast("Maul", ret => Me.HasBuff("Conspirator's Cloak")),
+                    Spell.Cast("Maul", ret => Core.Player.HasBuff("Conspirator's Cloak")),
                     //Dark Charge's Discharge applies the accuracy debuff "Unsteady (Force)" (45s)
-                    Spell.Cast("Discharge", ret => !Me.Target.HasMyDebuff("Unsteady (Force)")),
-                    Spell.Cast("Thrash", ret => Me.ForcePercent >= 30),
+                    Spell.Cast("Discharge", ret => !Core.Player.Target.HasMyDebuff("Unsteady (Force)")),
+                    Spell.Cast("Thrash", ret => Core.Player.ForcePercent >= 30),
                     Spell.Cast("Saber Strike")
 
                     );
@@ -103,7 +103,7 @@ namespace DefaultCombat.Routines
                             Spell.Cast("Discharge"),
                             Spell.Cast("Severing Slash"))),
                     new Decorator(ret => Targeting.ShouldPbaoe,
-                        Spell.Cast("Lacerate", ret => Me.ForcePercent >= 40))
+                        Spell.Cast("Lacerate", ret => Core.Player.ForcePercent >= 40))
                     );
             }
         }

@@ -7,15 +7,15 @@ using BuddyCron.Helpers;
 using BuddyCron.Managers;
 using BuddyCron.Navigation;
 using BuddyCron.Objects;
+using DefaultCombat.Behaviors;
 using Reborn.Utilities;
 using Reborn.Behaviors.Treesharp;
-using DefaultCombat.Core;
 using DefaultCombat.Helpers;
 
 namespace DefaultCombat.Routines
 {
     // 7.x Assault Specialist Commando (Republic mirror of Innovative Ordnance Mercenary).
-    // Cell convention: Me.EnergyPercent is the REMAINING resource (100 = full Energy Cells,
+    // Cell convention: Core.Player.EnergyPercent is the REMAINING resource (100 = full Energy Cells,
     // 0 = empty), so "starved" == low EnergyPercent. Hammer Shot is the free filler that lets
     // cells regenerate.
     /// <summary>
@@ -37,19 +37,19 @@ namespace DefaultCombat.Routines
             get
             {
                 return new PrioritySelector(
-                    Spell.Buff("Tenacity", ret => Me.IsStunned),
+                    Spell.Buff("Tenacity", ret => Core.Player.IsStunned),
 
                     //Defensives -- these are what keep a leveling character alive
-                    Spell.Buff("Reactive Shield", ret => Me.HealthPercent <= 70),
-                    Spell.Buff("Diversion", ret => Me.HealthPercent <= 50),            //ability-tree choice
-                    Spell.Buff("Adrenaline Rush", ret => Me.HealthPercent <= 35),
-                    Spell.Buff("Echoing Deterrence", ret => Me.HealthPercent <= 30),   //ability-tree choice
-                    Spell.Buff("Unity", ret => Me.Companion != null && Me.HealthPercent <= 15),
+                    Spell.Buff("Reactive Shield", ret => Core.Player.HealthPercent <= 70),
+                    Spell.Buff("Diversion", ret => Core.Player.HealthPercent <= 50),            //ability-tree choice
+                    Spell.Buff("Adrenaline Rush", ret => Core.Player.HealthPercent <= 35),
+                    Spell.Buff("Echoing Deterrence", ret => Core.Player.HealthPercent <= 30),   //ability-tree choice
+                    Spell.Buff("Unity", ret => Core.Player.Companion != null && Core.Player.HealthPercent <= 15),
 
                     //Cells / offensive cooldowns
-                    Spell.Buff("Recharge Cells", ret => Me.InCombat && Me.EnergyPercent <= 40),
-                    Spell.Buff("Supercharged Cell", ret => Me.InCombat && Me.BuffCount("Supercharge") >= 10),
-                    Spell.Buff("Tech Override", ret => Me.InCombat)
+                    Spell.Buff("Recharge Cells", ret => Core.Player.InCombat && Core.Player.EnergyPercent <= 40),
+                    Spell.Buff("Supercharged Cell", ret => Core.Player.InCombat && Core.Player.BuffCount("Supercharge") >= 10),
+                    Spell.Buff("Tech Override", ret => Core.Player.InCombat)
                     );
             }
         }
@@ -63,13 +63,13 @@ namespace DefaultCombat.Routines
                     CombatMovement.CloseDistance(Distance.Ranged),
 
                     //Legacy Heroic Moment Abilities --will only be active when user initiates Heroic Moment--
-                    HeroicComposite,
+                    RotationRuntime.HeroicMoment,
 
                     //Interrupt
-                    Spell.Cast("Disabling Shot", ret => Me.Target.IsCasting && CombatHotkeys.EnableInterrupts),
+                    Spell.Cast("Disabling Shot", ret => Core.Player.Target.IsCasting && CombatHotkeys.EnableInterrupts),
 
                     //Emergency cell dump -- Hammer Shot is free and lets cells regenerate
-                    Spell.Cast("Hammer Shot", ret => Me.EnergyPercent <= 25),
+                    Spell.Cast("Hammer Shot", ret => Core.Player.EnergyPercent <= 25),
 
                     //DoT upkeep (the whole point of the spec). Debuff names verified against the ability data:
                     //abl.trooper.skill.plasmatech.incendiary_round        -> "Burning (Incendiary Round)" (Debuff, 15s)
@@ -80,10 +80,10 @@ namespace DefaultCombat.Routines
                     //Rotation
                     Spell.Cast("Assault Plastique"),                                    //ability-tree choice
                     Spell.Cast("Mag Bolt"),                                             //free/reset by the Ionic Accelerator proc
-                    Spell.Cast("Electro Net", ret => Me.Target.StrongOrGreater()),
+                    Spell.Cast("Electro Net", ret => Core.Player.Target.StrongOrGreater()),
                     Spell.Cast("Full Auto"),
-                    Spell.Cast("Explosive Round", ret => Me.HasBuff("Hyper Assault Rounds")),   //free instant
-                    Spell.Cast("Charged Bolts", ret => Me.EnergyPercent >= 55),
+                    Spell.Cast("Explosive Round", ret => Core.Player.HasBuff("Hyper Assault Rounds")),   //free instant
+                    Spell.Cast("Charged Bolts", ret => Core.Player.EnergyPercent >= 55),
 
                     //Never stall: free basic attack
                     Spell.Cast("Hammer Shot")
@@ -97,12 +97,12 @@ namespace DefaultCombat.Routines
             {
                 return new Decorator(ret => Targeting.ShouldAoe,
                     new PrioritySelector(
-                        Spell.Cast("Plasma Grenade", ret => Me.EnergyPercent >= 50),
+                        Spell.Cast("Plasma Grenade", ret => Core.Player.EnergyPercent >= 50),
                         Spell.CastOnGround("Mortar Volley"),
                         Spell.DoT("Incendiary Round", "Burning (Incendiary Round)", 12000),
                         Spell.DoT("Serrated Bolt", "Bleeding", 12000),
-                        Spell.Cast("Explosive Round", ret => Me.HasBuff("Hyper Assault Rounds")),
-                        Spell.CastOnGround("Hail of Bolts", ret => Me.EnergyPercent >= 40)
+                        Spell.Cast("Explosive Round", ret => Core.Player.HasBuff("Hyper Assault Rounds")),
+                        Spell.CastOnGround("Hail of Bolts", ret => Core.Player.EnergyPercent >= 40)
                         ));
             }
         }
