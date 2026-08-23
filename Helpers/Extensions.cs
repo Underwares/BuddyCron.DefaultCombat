@@ -271,21 +271,21 @@ namespace DefaultCombat.Helpers
         /// at or above its stack threshold (threshold 0 = any stacks).</summary>
         public static bool NeedsCleanse(this HeroCharacter p)
         {
+            // The game can expose multiple effect instances with the same display
+            // name (for example, "Flame Sweep"). ToDictionary requires unique
+            // keys, so merge duplicate names and retain the highest stack count.
             var debuffs = p.Debuffs
                 .Where(effect => effect != null && !string.IsNullOrEmpty(effect.Name))
                 .GroupBy(effect => effect.Name)
-                .Select(group => new
-                {
-                    Name = group.Key,
-                    Stacks = group.Max(effect => effect.Stacks)
-                })
-                .ToList();
+                .ToDictionary(
+                    group => group.Key,
+                    group => group.Max(effect => effect.Stacks));
 
             foreach (var d in DebuffList)
             {
                 if (debuffs.Any(effect =>
-                    string.Equals(effect.Name, d.Name, StringComparison.Ordinal) &&
-                    (d.Stacks == 0 || effect.Stacks >= d.Stacks)))
+                    string.Equals(effect.Key, d.Name, StringComparison.Ordinal) &&
+                    (d.Stacks == 0 || effect.Value >= d.Stacks)))
                 {
                     return true;
                 }
