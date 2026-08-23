@@ -25,11 +25,11 @@ namespace DefaultCombat.Routines
     //   - Emergency Scan -> Healing Scan combo off cooldown (core mechanic)
     //   - Progressive Scan off cooldown, ideally towards end of Supercharge
     //   - Supercharged Gas at 10 stacks; Emergency Scan right after for Concentrated Fire crit
-    //   - Rapid Scan builds Critical Efficiency (3 stacks = free Healing Scan) and Power Barrier (DR)
+    //   - Rapid Scan is a situational filler that builds Critical Efficiency and Power Barrier (DR)
     //   - Kolto Shell maintained on tank, refreshed on all during downtime
     //   - Kolto Shot woven in as free filler / heat dump / Supercharge builder
-    //   - Healing Scan ONLY when proc'd (Emergency Response) or during Supercharged Gas or with
-    //     3 Critical Efficiency stacks — never hardcast otherwise
+    //   - Healing Scan favors Emergency Response, Supercharged Gas, or capped Critical Efficiency;
+    //     hardcast only for low-level fallback or urgent stationary healing
     /// <summary>
     ///     Mercenary Bodyguard (healer) rotation: Kolto Shell upkeep, Emergency Scan / Healing Scan
     ///     combo triage, Progressive Scan off cooldown, with a dps filler for solo play.
@@ -57,22 +57,33 @@ namespace DefaultCombat.Routines
                     //Emergency Scan right after this benefits from Concentrated Fire (crit) if equipped.
                     Spell.Buff("Supercharged Gas",
                         ret => Core.Player.InCombat && Core.Player.BuffCount("Supercharge") >= 10
-                               && Targeting.HealTarget != null && Targeting.HealTarget.HealthPercent <= 85),
+                               && Targeting.HealTarget != null && Targeting.HealTarget.HealthPercent <= 90),
                     Spell.Buff("Supercharged Kolto Gas",
                         ret => Core.Player.InCombat && Core.Player.BuffCount("Supercharge") >= 10
-                               && Targeting.HealTarget != null && Targeting.HealTarget.HealthPercent <= 85),
+                               && Targeting.HealTarget != null && Targeting.HealTarget.HealthPercent <= 90),
 
                     //Heat — Vent Heat dumps 50 heat over 3s and makes the next ability free
                     Spell.Buff("Vent Heat", ret => Core.Player.InCombat && Core.Player.EnergyPercent <= 40),
 
-                    //Defensives — these are what keep a leveling character alive
-                    Spell.Buff("Energy Shield", ret => Core.Player.HealthPercent <= 60),
-                    Spell.Buff("Chaff Flare", ret => Core.Player.HealthPercent <= 50),           //ability-tree choice (~43)
-                    Spell.Buff("Kolto Overload", ret => Core.Player.HealthPercent <= 35),
-                    Spell.Buff("Responsive Safeguards", ret => Core.Player.HealthPercent <= 25), //ability-tree choice (~68)
+                    //Defensives. Avoid stacking the major reducers into the same damage window.
+                    Spell.Buff("Responsive Safeguards", ret => Core.Player.InCombat &&
+                        Core.Player.HealthPercent <= 35),
+                    Spell.Buff("Energy Shield", ret => Core.Player.InCombat &&
+                        Core.Player.HealthPercent <= 60 &&
+                        (!Core.Player.HasBuff("Responsive Safeguards") || Core.Player.HealthPercent <= 20)),
+                    //Chaff Flare's current ability-tree version also supplies AoE damage reduction.
+                    Spell.Buff("Chaff Flare", ret => Core.Player.InCombat &&
+                        Core.Player.HealthPercent <= 45 && !Core.Player.HasBuff("Energy Shield") &&
+                        !Core.Player.HasBuff("Responsive Safeguards")),
+                    //Arm the health monitor before reaching its trigger threshold.
+                    Spell.Buff("Kolto Overload", ret => Core.Player.InCombat && Core.Player.HealthPercent <= 55),
+                    //Alternate level-68 choice: use its mobility to kite while pressured.
+                    Spell.Buff("Hydraulic Overrides", ret => Core.Player.InCombat && Core.Player.IsMoving &&
+                        Core.Player.HealthPercent <= 45),
 
                     //Power Surge: instant-cast next Rapid Scan when moving and hurt (6s interrupt immunity)
-                    Spell.Buff("Power Surge", ret => Core.Player.IsMoving && Core.Player.HealthPercent <= 50),
+                    Spell.Buff("Power Surge", ret => Core.Player.IsMoving && Targeting.HealTarget != null &&
+                        Targeting.HealTarget.HealthPercent <= 50),
 
                     Spell.Buff("Unity", ret => Core.Player.Companion != null && Core.Player.HealthPercent <= 15)
                     );
@@ -91,6 +102,7 @@ namespace DefaultCombat.Routines
                 return new PrioritySelector(
                     //Movement
                     CombatMovement.CloseDistance(Distance.Ranged),
+                    CombatMovement.FaceTarget(Distance.Ranged),
 
                     //Legacy Heroic Moment Abilities --will only be active when user initiates Heroic Moment--
                     RotationRuntime.HeroicMoment,
@@ -134,51 +146,47 @@ namespace DefaultCombat.Routines
                         //Spell.Cast("Cure", ret => Targeting.HealTarget.ShouldDispel()), ((New Code Hold off for now))
                         Spell.Cleanse("Cure"),
 
-                        //Maintain Kolto Shell on the active tank at all times (in combat and downtime).
-                        //The guide: "Always refresh Shells on everyone during downtimes."
-                        Spell.Heal("Kolto Shell", on => Targeting.Tank, 100,
-                            ret => Targeting.Tank != null && !Targeting.Tank.HasMyBuff("Kolto Shell")),
-
-                        //Kolto Shell on the current triage target when hurt
-                        Spell.Heal("Kolto Shell", 85, ret => !Targeting.HealTarget.HasMyBuff("Kolto Shell")),
-
-                        //Refresh Kolto Shell on self during downtime
-                        Spell.Heal("Kolto Shell", on => Core.Player, 100,
-                            ret => !Core.Player.InCombat && !Core.Player.HasMyBuff("Kolto Shell")),
+                        //Pre-stack all available group members between pulls, one GCD at a time.
+                        Spell.Heal("Kolto Shell", on => Targeting.FriendlyWithoutMyBuff("Kolto Shell"), 100,
+                            ret => !Core.Player.InCombat),
 
                         //Emergency Scan is free (Emergency Response passive) and makes the next
                         //Healing Scan instant. Use off cooldown for the core combo.
-                        Spell.Heal("Emergency Scan", 80, ret => Core.Player.InCombat),
+                        Spell.Heal("Emergency Scan", 90, ret => Core.Player.InCombat),
 
                         //Healing Scan with Emergency Response proc (instant) or during Supercharged Gas
                         //(no cooldown, reduced heat). This is the primary burst heal combo.
-                        Spell.Heal("Healing Scan", 80,
+                        Spell.Heal("Healing Scan", 90,
                             ret => Core.Player.InCombat && (Core.Player.HasBuff("Emergency Response") ||
                                                    Core.Player.HasBuff("Supercharged Gas") ||
                                                    Core.Player.HasBuff("Supercharged Kolto Gas"))),
 
                         //Progressive Scan off cooldown — spreads heals to nearby allies.
                         //Guide: "Use it off cooldown ideally towards the end of Supercharge."
-                        Spell.Heal("Progressive Scan", 75, ret => !Core.Player.IsMoving),
+                        Spell.Heal("Progressive Scan", 85, ret => !Core.Player.IsMoving),
 
                         //Kolto Missile for clustered AoE healing (HealGround checks ShouldAoeHeal).
                         //Also slows enemies in the area — useful in Huttball.
                         Spell.HealGround("Kolto Missile", ret => Core.Player.InCombat),
 
-                        //Healing Scan with 3 Critical Efficiency stacks (free) or during Supercharged
-                        //Gas (no cooldown, reduced heat). Never hardcast otherwise — the guide is
-                        //explicit: "The only time you should be using Healing Scan is when it's proc'ed
-                        //to instantly cast by Emergency Scan." At very low levels before the Critical
-                        //Efficiency passive is learned, Healing Scan is an ordinary cooldown heal.
+                        //Spend capped Critical Efficiency stacks on the stronger scan. A low-level
+                        //character without the passive can still use its ordinary cooldown heal.
                         Spell.Heal("Healing Scan", 75,
                             ret => Core.Player.BuffCount("Critical Efficiency") >= 3 ||
-                                   Core.Player.HasBuff("Supercharged Gas") ||
-                                   Core.Player.HasBuff("Supercharged Kolto Gas") ||
                                    !AbilityManager.HasAbility("Critical Efficiency")),
 
+                        //Emergency hardcast when proc and capped-stack paths are unavailable.
+                        Spell.Heal("Healing Scan", 45,
+                            ret => !Core.Player.IsMoving && Core.Player.EnergyPercent >= 60),
+
+                        //Maintain Kolto Shell after immediate and AoE healing needs are handled.
+                        Spell.Heal("Kolto Shell", on => Targeting.Tank, 100,
+                            ret => Targeting.Tank != null && !Targeting.Tank.HasMyBuff("Kolto Shell")),
+                        Spell.Heal("Kolto Shell", 90, ret => !Targeting.HealTarget.HasMyBuff("Kolto Shell")),
+
                         //Rapid Scan builds Critical Efficiency (3 stacks = free Healing Scan) and
-                        //Power Barrier (2% DR per stack, up to 3). Primary channel filler.
-                        Spell.Heal("Rapid Scan", 75, ret => Core.Player.EnergyPercent >= 60),
+                        //Power Barrier (2% DR per stack, up to 3). Situational channel filler.
+                        Spell.Heal("Rapid Scan", 70, ret => Core.Player.EnergyPercent >= 70),
                         Spell.Heal("Rapid Scan", 40, ret => Core.Player.EnergyPercent >= 45),
 
                         //Kolto Shot: free, instant, builds Supercharge, vents heat (Kolto Boosters).

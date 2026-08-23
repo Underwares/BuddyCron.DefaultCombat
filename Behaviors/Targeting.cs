@@ -127,6 +127,12 @@ namespace DefaultCombat.Behaviors
                     {
                         foreach (var character in Objects)
                         {
+                            if (character == null || character.IsDead || !character.InLineOfSight ||
+                                character.DistanceSqr >= HealingDistance * HealingDistance)
+                            {
+                                continue;
+                            }
+
                             if (!string.IsNullOrEmpty(TankName) && character.Name == TankName)
                                 Tank = character;
 
@@ -246,6 +252,17 @@ namespace DefaultCombat.Behaviors
             }
 
             Objects.Add(character);
+        }
+
+        /// <summary>Returns a valid friendly target missing one of the player's maintainable buffs.</summary>
+        public static HeroCharacter FriendlyWithoutMyBuff(string buff)
+        {
+            if (Objects == null)
+                return null;
+
+            return Objects.FirstOrDefault(character =>
+                character != null && !character.IsDead && character.InLineOfSight &&
+                character.DistanceSqr < HealingDistance * HealingDistance && !character.HasMyBuff(buff));
         }
 
         /// <summary>Snapshot of all NPCs in the object manager as <see cref="HeroCharacter"/>

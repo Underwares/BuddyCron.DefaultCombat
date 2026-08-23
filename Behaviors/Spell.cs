@@ -61,17 +61,20 @@ namespace DefaultCombat.Behaviors
         /// when <paramref name="reqs"/> passes and the ability is currently usable.</summary>
         public static Composite Cast(string spell, UnitSelectionDelegate onUnit, Selection<bool> reqs = null)
         {
-            return
-                new Decorator(ret => onUnit != null && onUnit(ret) != null && (reqs == null || reqs(ret)) && AbilityManager.CanCast(spell, onUnit(ret)).Success,
-                        new Action(ret =>
-                        {
-                            //added current target health percent check
-                            Logger.Write(">> Casting <<   " + spell);
-                            MovementManager.MoveStop();
-                            AbilityManager.Cast(spell, onUnit(ret));
-                            
-                        })
-                    );
+            HeroCharacter selectedUnit = null;
+            return new Decorator(
+                ret =>
+                {
+                    selectedUnit = onUnit == null ? null : onUnit(ret);
+                    return selectedUnit != null && (reqs == null || reqs(ret)) &&
+                           AbilityManager.CanCast(spell, selectedUnit).Success;
+                },
+                new Action(ret =>
+                {
+                    Logger.Write(">> Casting <<   " + spell);
+                    MovementManager.MoveStop();
+                    AbilityManager.Cast(spell, selectedUnit);
+                }));
         }
 
         /// <summary>Casts the ground-targeted <paramref name="spell"/> at the current target's location.</summary>
@@ -88,12 +91,23 @@ namespace DefaultCombat.Behaviors
         /// <paramref name="location"/> (skipped when it yields <see cref="Vector3.Zero"/>).</summary>
         public static Composite CastOnGround(string spell, BuddyCron.Behaviors.ValueRetriever<Vector3> location, Selection<bool> reqs = null)
         {
-            return
-                new Decorator(
-                    ret =>
-                        (reqs == null || reqs(ret)) && location != null && location(ret) != Vector3.Zero &&
-                        AbilityManager.CanCast(spell, Core.Player.Target ?? Core.Player).Success,
-                    new Action(ret => { AbilityManager.Cast(spell, location(ret)); }));
+            return CastOnGround(spell, location, ret => Core.Player.Target ?? Core.Player, reqs);
+        }
+
+        public static Composite CastOnGround(string spell, BuddyCron.Behaviors.ValueRetriever<Vector3> location,
+            UnitSelectionDelegate validationUnit, Selection<bool> reqs = null)
+        {
+            Vector3 selectedLocation = Vector3.Zero;
+            HeroCharacter selectedUnit = null;
+            return new Decorator(
+                ret =>
+                {
+                    selectedLocation = location == null ? Vector3.Zero : location(ret);
+                    selectedUnit = validationUnit == null ? null : validationUnit(ret);
+                    return selectedLocation != Vector3.Zero && selectedUnit != null &&
+                           (reqs == null || reqs(ret)) && AbilityManager.CanCast(spell, selectedUnit).Success;
+                },
+                new Action(ret => { AbilityManager.Cast(spell, selectedLocation); }));
         }
 
         /// <summary>Ground-targeted DoT on the current target; see the unit-selecting overload.</summary>
@@ -158,24 +172,20 @@ namespace DefaultCombat.Behaviors
                         new Action(ret => { AbilityManager.Cast(spell, onUnit(ret)); })));
         }
 
-        /// <summary>Cast time in milliseconds of the first known ability whose name contains
+        /// <summary>Cast time in milliseconds of the exactly named known ability
         /// <paramref name="spell"/> (0 for instants).</summary>
         public static float GetCastTime(string spell)
         {
-            float castTime = 0;
-            var v = AbilityManager.KnownAbilities.FirstOrDefault(a => a.Name.Contains(spell)).CastingTime;
-            castTime += v * 1000;
-            return castTime;
+            HeroAbility ability;
+            return AbilityManager.HasAbility(spell, out ability) ? ability.CastingTime * 1000 : 0;
         }
 
-        /// <summary>Cooldown in milliseconds of the first known ability whose name contains
+        /// <summary>Cooldown in milliseconds of the exactly named known ability
         /// <paramref name="spell"/>.</summary>
         public static float GetCooldown(string spell)
         {
-            float time = 0;
-            var v = AbilityManager.KnownAbilities.FirstOrDefault(a => a.Name.Contains(spell)).CooldownTime;
-            time += v * 1000;
-            return time;
+            HeroAbility ability;
+            return AbilityManager.HasAbility(spell, out ability) ? ability.CooldownTime * 1000 : 0;
         }
 
         /// <summary>True while <paramref name="spell"/> is blacklisted against the target identified
@@ -248,7 +258,8 @@ namespace DefaultCombat.Behaviors
             return new Decorator(
                 ret => Targeting.AoeHealPoint != Vector3.Zero && (reqs == null || reqs(ret)) &&
                        Targeting.ShouldAoeHeal,
-                CastOnGround(spell, ret => Targeting.AoeHealPoint, ret => true));
+                CastOnGround(spell, ret => Targeting.AoeHealPoint,
+                    ret => Targeting.AoeHealTarget ?? Core.Player, ret => true));
         }
 
         #endregion
