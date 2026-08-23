@@ -272,7 +272,14 @@ namespace DefaultCombat.Helpers
         public static bool NeedsCleanse(this HeroCharacter p)
         {
 
-            var debuffs = p.Debuffs.ToDictionary(r => r.Name,k=>k.Stacks);
+            // The game can expose multiple effect instances with the same display
+            // name (for example, "Flame Sweep"). ToDictionary requires unique
+            // keys, so merge duplicate names and retain the highest stack count.
+            var debuffs = p.Debuffs
+                .GroupBy(effect => effect.Name)
+                .ToDictionary(
+                    group => group.Key,
+                    group => group.Max(effect => effect.Stacks));
 
             foreach (var d in DebuffList)
             {
