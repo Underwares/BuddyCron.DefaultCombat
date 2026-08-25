@@ -69,6 +69,7 @@ namespace DefaultCombat.Routines
             _combat = new Decorator(
                 ret => !CombatHotkeys.PauseRotation,
                 new PrioritySelector(
+                    Interrupts.HandlePriorityCast,
                     Spell.WaitForCast(),
                     RotationRuntime.MedPack.UseItem(ret => Core.Player.HealthPercent <= 30),
                     Targeting.ScanTargets,
