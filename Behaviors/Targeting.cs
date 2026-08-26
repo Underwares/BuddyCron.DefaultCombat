@@ -175,7 +175,7 @@ namespace DefaultCombat.Behaviors
 
                     foreach (var character in GetHeroCharacters())
                     {
-                        if (!character.IsValidTarget())
+                        if (!character.IsValidTarget() || !IsEngagedWithParty(character))
                             continue;
 
                         Enemies.Add(character);
@@ -214,6 +214,33 @@ namespace DefaultCombat.Behaviors
             }
 
             Tank = null;
+        }
+
+        /// <summary>True when an enemy is selected or fighting the player, companion, or party.</summary>
+        internal static bool IsEngagedWithParty(HeroCharacter enemy)
+        {
+            try
+            {
+                var me = Core.Player;
+                if (enemy == null || me == null)
+                    return false;
+
+                if (me.Target != null && enemy.NodeId == me.Target.NodeId)
+                    return true;
+                if (me.IsInCombatWith(enemy))
+                    return true;
+
+                var companion = me.Companion;
+                if (companion != null && companion.IsInCombatWith(enemy))
+                    return true;
+
+                return me.PartyMembers(true).Any(member => member != null &&
+                    member.IsInCombatWith(enemy));
+            }
+            catch
+            {
+                return false;
+            }
         }
 
         private static void updateObjects()
