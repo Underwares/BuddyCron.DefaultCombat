@@ -30,4 +30,12 @@
   </PropertyGroup>
   <Import Project="$(BuddyCronRefsProps)" Condition="'$(BuddyCronRefsProps)' != ''" />
 
+  <!-- Standalone checkouts do not contain the repository-wide props file. Use the same
+       compile-only package so CI type-checks against the host API without private binaries. -->
+  <ItemGroup Condition="'$(BuddyCronRefsProps)' == ''">
+    <PackageReference Include="BuddyCron.ReferenceAssemblies"
+                      Version="1.0.*"
+                      PrivateAssets="all" />
+  </ItemGroup>
+
 </Project>
