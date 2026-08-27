@@ -67,7 +67,6 @@ namespace DefaultCombat.Behaviors
                         {
                             //added current target health percent check
                             Logger.Write(">> Casting <<   " + spell);
-                            MovementManager.MoveStop();
                             AbilityManager.Cast(spell, onUnit(ret));
                             
                         })
@@ -120,7 +119,6 @@ namespace DefaultCombat.Behaviors
                         {
                             BlackListedSpells.Add(new ExpiringItem(spell, GetCooldown(spell) + 25 + time, onUnit(ctx).NodeId));
                             Logger.Write(">> Casting on Ground <<   " + spell);
-                            MovementManager.MoveStop();
                             return RunStatus.Failure;
                         }),
                         new Action(ret => { AbilityManager.Cast(spell, onUnit(ret).Location); })));
